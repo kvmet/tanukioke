@@ -103,4 +103,10 @@ impl LrxFile {
     pub fn get_track(&self, track_id: &str) -> Option<&Track> {
         self.tracks.get(track_id)
     }
+
+    /// Post-process the LRX file: sort lyrics by timestamp
+    pub fn finalize(&mut self) {
+        // Sort lyrics by timestamp
+        self.lines.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap_or(std::cmp::Ordering::Equal));
+    }
 }

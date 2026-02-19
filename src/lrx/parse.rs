@@ -25,6 +25,8 @@ impl LrxFile {
                 .with_context(|| format!("Error parsing line {}: {}", line_num + 1, line))?;
         }
 
+        lrx.finalize();
+
         Ok(lrx)
     }
 }
