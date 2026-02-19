@@ -19,7 +19,7 @@ impl Track {
 pub struct Song {
     pub folder: PathBuf,
     pub tracks: Vec<Track>,
-    pub lrc_path: Option<PathBuf>,
+    pub lrx_path: Option<PathBuf>,
 }
 
 impl Song {
@@ -27,7 +27,7 @@ impl Song {
         Self {
             folder,
             tracks: Vec::new(),
-            lrc_path: None,
+            lrx_path: None,
         }
     }
 }

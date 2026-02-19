@@ -1,7 +1,7 @@
 use eframe::egui;
-use crate::lrc::Lyrics;
+use crate::lrx::LrxFile;
 
-pub fn render(ui: &mut egui::Ui, _lyrics: Option<&Lyrics>, _current_position: f64) {
+pub fn render(ui: &mut egui::Ui, _lyrics: Option<&LrxFile>, _current_position: f64) {
     ui.heading("Lyrics");
 
     // TODO: Display lyrics lines with timestamps

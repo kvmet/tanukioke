@@ -2,7 +2,7 @@ mod app;
 mod audio;
 mod config;
 mod library;
-mod lrc;
+mod lrx;
 mod queue;
 mod ui;
 
