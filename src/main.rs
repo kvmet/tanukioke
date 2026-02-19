@@ -87,8 +87,8 @@ fn test_library() -> anyhow::Result<()> {
                             for (id, part) in &lrx.parts {
                                 println!("      - [{}] {} (fg: #{:02X}{:02X}{:02X}{})",
                                     id, part.name,
-                                    part.fg_color.r(), part.fg_color.g(), part.fg_color.b(),
-                                    part.bg_color.map(|c| format!(", bg: #{:02X}{:02X}{:02X}", c.r(), c.g(), c.b()))
+                                    part.color.r(), part.color.g(), part.color.b(),
+                                    part.background_color.map(|c| format!(", bg: #{:02X}{:02X}{:02X}", c.r(), c.g(), c.b()))
                                         .unwrap_or_default());
                             }
 

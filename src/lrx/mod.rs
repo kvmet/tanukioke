@@ -28,8 +28,8 @@ impl Track {
 pub struct Part {
     pub id: String,
     pub name: String,
-    pub fg_color: Color32,
-    pub bg_color: Option<Color32>,
+    pub color: Color32,
+    pub background_color: Option<Color32>,
 }
 
 impl Part {
@@ -37,17 +37,17 @@ impl Part {
         Self {
             id,
             name,
-            fg_color: Color32::WHITE,
-            bg_color: None,
+            color: Color32::WHITE,
+            background_color: None,
         }
     }
 
-    pub fn with_colors(id: String, name: String, fg_color: Color32, bg_color: Option<Color32>) -> Self {
+    pub fn with_colors(id: String, name: String, color: Color32, background_color: Option<Color32>) -> Self {
         Self {
             id,
             name,
-            fg_color,
-            bg_color,
+            color,
+            background_color,
         }
     }
 }
@@ -83,6 +83,8 @@ pub struct LrxFile {
     pub tracks: HashMap<String, Track>,
     pub parts: HashMap<String, Part>,
     pub lines: Vec<LyricLine>,
+    pub color: Option<Color32>,
+    pub background_color: Option<Color32>,
 }
 
 impl LrxFile {
@@ -92,6 +94,8 @@ impl LrxFile {
             tracks: HashMap::new(),
             parts: HashMap::new(),
             lines: Vec::new(),
+            color: None,
+            background_color: None,
         }
     }
 

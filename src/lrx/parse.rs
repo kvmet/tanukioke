@@ -155,6 +155,14 @@ fn parse_tag(lrx: &mut LrxFile, tag: &str) -> Result<()> {
     // Check if it's a dot notation (track.id:prop or part.id:prop)
     if key.contains('.') {
         parse_dot_notation(lrx, key, value)?;
+    } else if key == "color" {
+        // Global foreground color
+        lrx.color = Some(parse_color(value)?);
+        lrx.metadata.insert(key.to_string(), value.to_string());
+    } else if key == "background_color" {
+        // Global background color
+        lrx.background_color = Some(parse_color(value)?);
+        lrx.metadata.insert(key.to_string(), value.to_string());
     } else {
         // Simple metadata tag
         lrx.metadata.insert(key.to_string(), value.to_string());
@@ -213,14 +221,14 @@ fn parse_part_property(lrx: &mut LrxFile, id: &str, property: &str, value: &str)
     let part = lrx.parts.entry(id.to_string()).or_insert_with(|| Part {
         id: id.to_string(),
         name: String::new(),
-        fg_color: Color32::WHITE,
-        bg_color: None,
+        color: Color32::WHITE,
+        background_color: None,
     });
 
     match property {
         "name" => part.name = value.to_string(),
-        "fg_color" => part.fg_color = parse_color(value)?,
-        "bg_color" => part.bg_color = Some(parse_color(value)?),
+        "color" => part.color = parse_color(value)?,
+        "background_color" => part.background_color = Some(parse_color(value)?),
         _ => return Err(anyhow!("Unknown part property: {}", property)),
     }
 

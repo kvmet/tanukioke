@@ -60,14 +60,17 @@ impl LyricsWindow {
                             // Measure height before rendering
                             let before_y = ui.cursor().top();
 
+                            // Color fallback hierarchy: part > lrx global > config default
                             let (fg_color, _bg_color) = if let Some(part_id) = &line.part_id {
                                 if let Some(part) = lyrics.get_part(part_id) {
-                                    (part.fg_color, part.bg_color)
+                                    (part.color, part.background_color)
                                 } else {
-                                    (egui::Color32::WHITE, None)
+                                    // Part doesn't exist, fall back to global/config
+                                    self.get_default_colors(lyrics)
                                 }
                             } else {
-                                (egui::Color32::WHITE, None)
+                                // No part specified, use global/config defaults
+                                self.get_default_colors(lyrics)
                             };
 
                             let opacity = if is_current {
@@ -224,5 +227,33 @@ impl LyricsWindow {
             }
             (None, None) => 0.0,
         }
+    }
+
+    /// Get default colors with fallback: lrx global > config default
+    fn get_default_colors(&self, lyrics: &LrxFile) -> (egui::Color32, Option<egui::Color32>) {
+        let fg_color = lyrics.color
+            .or_else(|| Self::parse_hex_color(&self.config.lyrics_default_fg_color))
+            .unwrap_or(egui::Color32::WHITE);
+
+        let bg_color = lyrics.background_color
+            .or_else(|| {
+                self.config.lyrics_default_bg_color.as_ref()
+                    .and_then(|s| Self::parse_hex_color(s))
+            });
+
+        (fg_color, bg_color)
+    }
+
+    /// Parse a hex color string like "#RRGGBB"
+    fn parse_hex_color(s: &str) -> Option<egui::Color32> {
+        if !s.starts_with('#') || s.len() != 7 {
+            return None;
+        }
+
+        let r = u8::from_str_radix(&s[1..3], 16).ok()?;
+        let g = u8::from_str_radix(&s[3..5], 16).ok()?;
+        let b = u8::from_str_radix(&s[5..7], 16).ok()?;
+
+        Some(egui::Color32::from_rgb(r, g, b))
     }
 }

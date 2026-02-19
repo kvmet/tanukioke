@@ -36,6 +36,15 @@ Standard LRC metadata tags using square bracket notation:
 | `offset` | Global timing offset in milliseconds | `[offset:+100]` or `[offset:-50]` |
 | `au` | Song author/composer | `[au:Composer Name]` |
 | `lr` | Lyricist | `[lr:Lyricist Name]` |
+| `color` | Global foreground color (hex) | `[color:#FFFFFF]` |
+| `background_color` | Global background color (hex) | `[background_color:#000000]` |
+
+### Color Hierarchy
+
+Colors follow a fallback hierarchy:
+1. **Part-specific colors** (if line has a part tag and part defines colors)
+2. **Global colors** (if `color` or `background_color` tags are set)
+3. **Application defaults** (from config)
 
 ## Track Definitions
 
@@ -82,24 +91,24 @@ Parts define vocal roles with custom styling. Uses dot notation:
 | Property | Type | Description | Default |
 |----------|------|-------------|---------|
 | `name` | string | Display name for the part | Required |
-| `fg_color` | hex color | Foreground/text color | `#FFFFFF` |
-| `bg_color` | hex color | Background color (optional) | None |
+| `color` | hex color | Foreground/text color | `#FFFFFF` |
+| `background_color` | hex color | Background color (optional) | None |
 
 ### Example
 
 ```
 [part.lead:name=Lead Vocal]
-[part.lead:fg_color=#FF6B9D]
-[part.lead:bg_color=#000000]
+[part.lead:color=#FF6B9D]
+[part.lead:background_color=#000000]
 
 [part.harmony:name=Harmony]
-[part.harmony:fg_color=#6B9DFF]
+[part.harmony:color=#6B9DFF]
 
 [part.alto:name=Alto]
-[part.alto:fg_color=#9DFF6B]
+[part.alto:color=#9DFF6B]
 
 [part.tenor:name=Tenor]
-[part.tenor:fg_color=#FFD700]
+[part.tenor:color=#FFD700]
 ```
 
 ## Timed Lyrics
@@ -119,7 +128,7 @@ Lyrics follow the standard LRC timestamp format with optional part tags:
 
 ### Rules
 
-- Lines without a part tag use default styling (white text, no background)
+- Lines without a part tag use global colors if defined, otherwise application defaults
 - Multiple timestamps can reference the same lyric line
 - Empty lines are ignored
 - Lines starting with `#` are comments
@@ -144,6 +153,8 @@ Lyrics follow the standard LRC timestamp format with optional part tags:
 [key:C]
 [by:Tanukioke User]
 [offset:0]
+[color:#FFFFFF]
+[background_color:#000000]
 
 [track.instrumental:name=Instrumental]
 [track.instrumental:source=instrumental.mp3]
@@ -154,10 +165,10 @@ Lyrics follow the standard LRC timestamp format with optional part tags:
 [track.vocals:volume=1.0]
 
 [part.lead:name=Lead]
-[part.lead:fg_color=#FF6B9D]
+[part.lead:color=#FF6B9D]
 
 [part.harmony:name=Harmony]
-[part.harmony:fg_color=#6B9DFF]
+[part.harmony:color=#6B9DFF]
 
 [00:12.00][lead]Lorem ipsum dolor sit amet consectetur
 [00:18.50][lead]Adipiscing elit sed do eiusmod tempor
@@ -170,7 +181,7 @@ Lyrics follow the standard LRC timestamp format with optional part tags:
 ### LRC Compatibility
 
 LRX files can be parsed by standard LRC players, though:
-- Extended tags (track.*, part.*) will be ignored
+- Extended tags (track.*, part.*, color, background_color) will be ignored
 - Part tags in lyrics will appear as extra text brackets
 - Only basic timestamps and lyrics will be displayed
 
