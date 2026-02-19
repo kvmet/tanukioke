@@ -42,6 +42,9 @@ impl LyricsWindow {
 
             scroll_area.show(ui, |ui| {
                 ui.vertical_centered(|ui| {
+                    // Set item spacing to our configured value
+                    ui.spacing_mut().item_spacing.y = self.config.lyrics_line_spacing;
+
                     // Add top padding to allow centering
                     ui.add_space(window_height / 2.0);
 
@@ -152,6 +155,9 @@ impl LyricsWindow {
             return;
         }
 
+        // Use configured line spacing
+        let line_spacing = self.config.lyrics_line_spacing;
+
         // Use egui's font system to measure heights without rendering
         let mut cumulative_y = window_height / 2.0; // Start after top padding
 
@@ -170,8 +176,8 @@ impl LyricsWindow {
             let line_center = cumulative_y + line_height / 2.0;
             self.line_centers.push(line_center);
 
-            // Move to next line position
-            cumulative_y += line_height;
+            // Move to next line position (including spacing between items)
+            cumulative_y += line_height + line_spacing;
         }
     }
 
