@@ -35,6 +35,8 @@ pub struct App {
     lyrics_window: Option<crate::ui::lyrics_window::LyricsWindow>,
     config: crate::config::Config,
     library_songs: Vec<crate::library::Song>,
+    library_search_query: String,
+    show_rescan_confirm: bool,
 }
 
 impl App {
@@ -71,6 +73,8 @@ impl App {
             lyrics_window: None,
             config,
             library_songs,
+            library_search_query: String::new(),
+            show_rescan_confirm: false,
         }
     }
 
@@ -201,7 +205,13 @@ impl eframe::App for App {
                                 state.is_playing
                             };
 
-                            if let Some(action) = crate::ui::library_view::render(ui, &self.library_songs, is_playing) {
+                            if let Some(action) = crate::ui::library_view::render(
+                                ui,
+                                &self.library_songs,
+                                is_playing,
+                                &mut self.library_search_query,
+                                &mut self.show_rescan_confirm
+                            ) {
                                 match action {
                                     crate::ui::library_view::LibraryAction::Load(path) => {
                                         match self.load_song(path) {
@@ -216,6 +226,19 @@ impl eframe::App for App {
                                     crate::ui::library_view::LibraryAction::Enqueue(path) => {
                                         // TODO: Implement queue functionality
                                         println!("Enqueue not yet implemented: {:?}", path);
+                                    }
+                                    crate::ui::library_view::LibraryAction::Rescan => {
+                                        if let Some(library_path) = &self.config.library_path {
+                                            match crate::library::scan_library(library_path) {
+                                                Ok(songs) => {
+                                                    println!("Rescanned library: found {} songs", songs.len());
+                                                    self.library_songs = songs;
+                                                }
+                                                Err(e) => {
+                                                    eprintln!("Failed to rescan library: {}", e);
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }

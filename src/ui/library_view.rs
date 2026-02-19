@@ -6,12 +6,61 @@ use crate::library::Song;
 pub enum LibraryAction {
     Load(PathBuf),
     Enqueue(PathBuf),
+    Rescan,
 }
 
-pub fn render(ui: &mut egui::Ui, songs: &[Song], is_playing: bool) -> Option<LibraryAction> {
+pub fn render(ui: &mut egui::Ui, songs: &[Song], is_playing: bool, search_query: &mut String, show_rescan_confirm: &mut bool) -> Option<LibraryAction> {
     let mut action = None;
 
-    ui.heading("Library");
+    ui.horizontal(|ui| {
+        ui.heading("Library");
+
+        ui.add_space(10.0);
+
+        // Rescan button
+        if ui.button("🔄 Rescan").clicked() {
+            *show_rescan_confirm = true;
+        }
+
+        ui.add_space(10.0);
+
+        // Search box
+        ui.add(
+            egui::TextEdit::singleline(search_query)
+                .hint_text("Search...")
+                .desired_width(200.0)
+        );
+
+        // Clear search button - always visible, greyed when empty
+        let clear_button = ui.add_enabled(!search_query.is_empty(), egui::Button::new("✖"));
+        if clear_button.clicked() {
+            search_query.clear();
+        }
+    });
+
+    // Rescan confirmation popup
+    let mut confirmed_rescan = false;
+    if *show_rescan_confirm {
+        egui::Window::new("Confirm Rescan")
+            .collapsible(false)
+            .resizable(false)
+            .show(ui.ctx(), |ui| {
+                ui.label("Are you sure you want to rescan the library?");
+                ui.horizontal(|ui| {
+                    if ui.button("Yes").clicked() {
+                        confirmed_rescan = true;
+                        *show_rescan_confirm = false;
+                    }
+                    if ui.button("Cancel").clicked() {
+                        *show_rescan_confirm = false;
+                    }
+                });
+            });
+    }
+
+    if confirmed_rescan {
+        return Some(LibraryAction::Rescan);
+    }
 
     if songs.is_empty() {
         ui.label("No songs loaded yet");
@@ -19,6 +68,20 @@ pub fn render(ui: &mut egui::Ui, songs: &[Song], is_playing: bool) -> Option<Lib
     }
 
     ui.separator();
+
+    // Filter songs based on search query
+    let filtered_songs: Vec<&Song> = if search_query.is_empty() {
+        songs.iter().collect()
+    } else {
+        let query_lower = search_query.to_lowercase();
+        songs.iter().filter(|song| {
+            let metadata = song.get_metadata();
+            metadata.artist.to_lowercase().contains(&query_lower)
+                || metadata.album.to_lowercase().contains(&query_lower)
+                || metadata.title.to_lowercase().contains(&query_lower)
+                || song.title().to_lowercase().contains(&query_lower)
+        }).collect()
+    };
 
     egui::ScrollArea::vertical().show(ui, |ui| {
         use egui_extras::{TableBuilder, Column};
@@ -46,7 +109,7 @@ pub fn render(ui: &mut egui::Ui, songs: &[Song], is_playing: bool) -> Option<Lib
                 });
             })
             .body(|mut body| {
-                for song in songs {
+                for song in filtered_songs {
                     let metadata = song.get_metadata();
                     let lrx_path = song.lrx_path.clone();
 
