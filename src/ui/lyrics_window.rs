@@ -8,8 +8,8 @@ pub struct LyricsWindow {
     playback_state: Arc<Mutex<PlaybackState>>,
     lyrics: Option<LrxFile>,
     config: Config,
-    // Store center Y position in content space for each lyric line
-    line_centers: Vec<f32>,
+    // Store measured heights for each lyric line
+    line_heights: Vec<f32>,
 }
 
 impl LyricsWindow {
@@ -18,7 +18,7 @@ impl LyricsWindow {
             playback_state,
             lyrics,
             config,
-            line_centers: Vec::new(),
+            line_heights: Vec::new(),
         }
     }
 
@@ -28,11 +28,11 @@ impl LyricsWindow {
         let duration = state.duration;
         drop(state);
 
-        // First pass: measure line heights to build stable content-space positions
-        self.measure_line_positions(ctx, window_height);
-
-        // Calculate scroll offset based on stable measurements
+        // Calculate scroll offset based on stable height measurements
         let scroll_y = self.calculate_scroll_offset(current_position, window_height);
+
+        // Clear line heights for this frame's measurements
+        self.line_heights.clear();
 
         egui::CentralPanel::default().show(ctx, |ui| {
             let scroll_area = egui::ScrollArea::vertical()
@@ -52,10 +52,13 @@ impl LyricsWindow {
                         let current_line_idx = self.find_current_line_index(current_position);
                         let font_size = self.config.lyrics_font_size;
 
-                        // Render all lines
+                        // Render all lines and measure their heights
                         for (i, line) in lyrics.lines.iter().enumerate() {
                             let is_current = Some(i) == current_line_idx;
                             let is_past = current_line_idx.map(|c| i < c).unwrap_or(false);
+
+                            // Measure height before rendering
+                            let before_y = ui.cursor().top();
 
                             let (fg_color, _bg_color) = if let Some(part_id) = &line.part_id {
                                 if let Some(part) = lyrics.get_part(part_id) {
@@ -86,6 +89,13 @@ impl LyricsWindow {
                             };
 
                             ui.label(text);
+
+                            // Measure height after rendering
+                            let after_y = ui.cursor().top();
+                            let line_height = after_y - before_y;
+
+                            // Store measured height (stable, independent of scroll position)
+                            self.line_heights.push(line_height);
                         }
                     } else {
                         ui.heading("No lyrics loaded");
@@ -142,45 +152,6 @@ impl LyricsWindow {
         None
     }
 
-    /// Measure line heights in content space (independent of scrolling)
-    fn measure_line_positions(&mut self, ctx: &egui::Context, window_height: f32) {
-        self.line_centers.clear();
-
-        let lyrics = match &self.lyrics {
-            Some(l) => l,
-            None => return,
-        };
-
-        if lyrics.lines.is_empty() {
-            return;
-        }
-
-        // Use configured line spacing
-        let line_spacing = self.config.lyrics_line_spacing;
-
-        // Use egui's font system to measure heights without rendering
-        let mut cumulative_y = window_height / 2.0; // Start after top padding
-
-        for line in &lyrics.lines {
-            let font_size = self.config.lyrics_font_size;
-
-            // Use egui's font system to measure text height
-            let font_id = egui::FontId::proportional(font_size);
-            let galley = ctx.fonts(|fonts| {
-                fonts.layout_no_wrap(line.text.clone(), font_id, egui::Color32::WHITE)
-            });
-
-            let line_height = galley.rect.height();
-
-            // Center of this line in content space
-            let line_center = cumulative_y + line_height / 2.0;
-            self.line_centers.push(line_center);
-
-            // Move to next line position (including spacing between items)
-            cumulative_y += line_height + line_spacing;
-        }
-    }
-
     /// Calculate scroll position to center the appropriate line based on time
     fn calculate_scroll_offset(&self, current_position: f64, window_height: f32) -> f32 {
         let lyrics = match &self.lyrics {
@@ -188,8 +159,24 @@ impl LyricsWindow {
             None => return 0.0,
         };
 
-        if lyrics.lines.is_empty() || self.line_centers.is_empty() {
+        if lyrics.lines.is_empty() || self.line_heights.is_empty() {
             return 0.0;
+        }
+
+        // Calculate stable content-space positions from measured heights
+        let line_spacing = self.config.lyrics_line_spacing;
+        let mut line_centers = Vec::new();
+        let mut cumulative_y = window_height / 2.0; // Top padding
+
+        for (i, &height) in self.line_heights.iter().enumerate() {
+            let line_center = cumulative_y + height / 2.0;
+            line_centers.push(line_center);
+
+            cumulative_y += height;
+            // Add spacing only between items
+            if i < self.line_heights.len() - 1 {
+                cumulative_y += line_spacing;
+            }
         }
 
         // Find which two lyrics we're between
@@ -210,8 +197,8 @@ impl LyricsWindow {
         match (current_idx, next_idx) {
             (Some(current), Some(next)) => {
                 // Lerp between line centers based on time
-                let current_center = self.line_centers[current];
-                let next_center = self.line_centers[next];
+                let current_center = line_centers[current];
+                let next_center = line_centers[next];
 
                 let current_time = lyrics.lines[current].timestamp;
                 let next_time = lyrics.lines[next].timestamp;
@@ -232,7 +219,7 @@ impl LyricsWindow {
             }
             (Some(current), None) => {
                 // At or past last lyric
-                self.line_centers[current] - viewport_center
+                line_centers[current] - viewport_center
             }
             (None, Some(next)) => {
                 // Before first lyric - stay at top
