@@ -34,7 +34,27 @@ impl LyricsWindow {
         // Clear line heights for this frame's measurements
         self.line_heights.clear();
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        // Get global background color
+        let bg_color = if let Some(lyrics) = &self.lyrics {
+            lyrics.background_color
+                .or_else(|| {
+                    self.config.lyrics_default_bg_color.as_ref()
+                        .and_then(|s| Self::parse_hex_color(s))
+                })
+        } else {
+            None
+        };
+
+        let mut central_panel = egui::CentralPanel::default();
+        if let Some(bg_color) = bg_color {
+            central_panel = central_panel.frame(
+                egui::Frame::default()
+                    .fill(bg_color)
+                    .inner_margin(egui::Margin::same(0))
+            );
+        }
+
+        central_panel.show(ctx, |ui| {
             let scroll_area = egui::ScrollArea::vertical()
                 .auto_shrink([false; 2])
                 .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
@@ -61,16 +81,16 @@ impl LyricsWindow {
                             let before_y = ui.cursor().top();
 
                             // Color fallback hierarchy: part > lrx global > config default
-                            let (fg_color, _bg_color) = if let Some(part_id) = &line.part_id {
+                            let fg_color = if let Some(part_id) = &line.part_id {
                                 if let Some(part) = lyrics.get_part(part_id) {
-                                    (part.color, part.background_color)
+                                    part.color
                                 } else {
                                     // Part doesn't exist, fall back to global/config
-                                    self.get_default_colors(lyrics)
+                                    self.get_default_color(lyrics)
                                 }
                             } else {
                                 // No part specified, use global/config defaults
-                                self.get_default_colors(lyrics)
+                                self.get_default_color(lyrics)
                             };
 
                             let opacity = if is_current {
@@ -229,19 +249,11 @@ impl LyricsWindow {
         }
     }
 
-    /// Get default colors with fallback: lrx global > config default
-    fn get_default_colors(&self, lyrics: &LrxFile) -> (egui::Color32, Option<egui::Color32>) {
-        let fg_color = lyrics.color
+    /// Get default foreground color with fallback: lrx global > config default
+    fn get_default_color(&self, lyrics: &LrxFile) -> egui::Color32 {
+        lyrics.color
             .or_else(|| Self::parse_hex_color(&self.config.lyrics_default_fg_color))
-            .unwrap_or(egui::Color32::WHITE);
-
-        let bg_color = lyrics.background_color
-            .or_else(|| {
-                self.config.lyrics_default_bg_color.as_ref()
-                    .and_then(|s| Self::parse_hex_color(s))
-            });
-
-        (fg_color, bg_color)
+            .unwrap_or(egui::Color32::WHITE)
     }
 
     /// Parse a hex color string like "#RRGGBB"
