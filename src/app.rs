@@ -118,7 +118,7 @@ impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Update playback state from audio engine
         {
-            let engine = self.audio_engine.lock().unwrap();
+            let mut engine = self.audio_engine.lock().unwrap();
             let mut state = self.playback_state.lock().unwrap();
             engine.update_playback_state(&mut state);
         }

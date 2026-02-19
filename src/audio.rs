@@ -133,21 +133,29 @@ impl AudioEngine {
     }
 
     fn reload_at_position(&mut self, position: Duration) -> Result<()> {
-        // Stop and clear all sinks
-        for track in &self.tracks {
-            track.sink.stop();
+        if self.tracks.is_empty() {
+            return Ok(());
         }
 
-        // Reload all tracks at the seek position
-        for track in &mut self.tracks {
+        // Clamp position to valid range
+        let max_duration = self.tracks.iter()
+            .map(|t| t.duration)
+            .max()
+            .unwrap_or(Duration::ZERO);
+        let clamped_position = position.min(max_duration);
+
+        // Build all new track data first, before modifying state
+        let mut new_tracks = Vec::new();
+
+        for track in &self.tracks {
             let file = File::open(&track.source)
                 .with_context(|| format!("Failed to open audio file: {}", track.source.display()))?;
             let buf_reader = BufReader::new(file);
             let source = Decoder::new(buf_reader)
                 .with_context(|| format!("Failed to decode audio file: {}", track.source.display()))?;
 
-            // Skip to position
-            let source = source.skip_duration(position);
+            // Skip to position (skip_duration with ZERO is a no-op)
+            let source = source.skip_duration(clamped_position);
 
             // Create new sink
             let new_sink = Sink::connect_new(&self.stream_handle.mixer());
@@ -155,8 +163,24 @@ impl AudioEngine {
             new_sink.append(source);
             new_sink.pause(); // Will be unpaused by play()
 
-            track.sink = new_sink;
+            new_tracks.push(TrackSink {
+                id: track.id.clone(),
+                name: track.name.clone(),
+                sink: new_sink,
+                duration: track.duration,
+                source: track.source.clone(),
+                volume: track.volume,
+            });
         }
+
+        // Stop and explicitly clear all old sinks
+        for track in &mut self.tracks {
+            track.sink.stop();
+        }
+        self.tracks.clear();
+
+        // Replace with new tracks
+        self.tracks = new_tracks;
 
         Ok(())
     }
@@ -175,18 +199,65 @@ impl AudioEngine {
         self.playback_start = None;
         self.paused_at = None;
 
+        // Set seek position to 0 so next play will reload tracks from beginning
+        self.seek_position = Some(Duration::ZERO);
+
         for track in &self.tracks {
             track.sink.stop();
         }
     }
 
+    /// Fully reset and reload all tracks from scratch at position 0
+    pub fn reset(&mut self) -> Result<()> {
+        // Stop everything
+        self.stop();
+
+        // If we have tracks, reload them all from the beginning
+        if self.tracks.is_empty() {
+            return Ok(());
+        }
+
+        let track_infos: Vec<_> = self.tracks.iter().map(|t| {
+            (t.id.clone(), t.name.clone(), t.source.clone(), t.volume)
+        }).collect();
+
+        self.tracks.clear();
+
+        // Reload from base_dir if set
+        if let Some(ref base_dir) = self.base_dir {
+            let base = base_dir.clone();
+            self.load_tracks(track_infos.into_iter().map(|(id, name, source, volume)| {
+                let path = if source.is_relative() {
+                    base.join(&source)
+                } else {
+                    source
+                };
+                (id, name, path, volume)
+            }).collect())
+        } else {
+            self.load_tracks(track_infos)
+        }
+    }
+
     pub fn seek(&mut self, position: Duration) -> Result<()> {
+        if self.tracks.is_empty() {
+            return Ok(());
+        }
+
         // Always pause on seek
         self.pause();
 
+        // Clamp position to valid range (can't seek beyond duration)
+        let duration = self.duration();
+        let clamped_position = if duration > Duration::ZERO {
+            position.min(duration)
+        } else {
+            position
+        };
+
         // Store the seek position for next play
-        self.seek_position = Some(position);
-        self.paused_at = Some(position);
+        self.seek_position = Some(clamped_position);
+        self.paused_at = Some(clamped_position);
         self.playback_start = None;
 
         Ok(())
@@ -226,11 +297,27 @@ impl AudioEngine {
     pub fn tracks_mut(&mut self) -> &mut [TrackSink] {
         &mut self.tracks
     }
+
+    /// Check if all tracks have finished playing
+    fn is_finished(&self) -> bool {
+        if self.tracks.is_empty() {
+            return true;
+        }
+        // All sinks must be empty (finished)
+        self.tracks.iter().all(|t| t.sink.empty())
+    }
 }
 
 impl AudioEngine {
     /// Update the given playback state with current engine state
-    pub fn update_playback_state(&self, state: &mut crate::app::PlaybackState) {
+    /// Also handles auto-stop when playback finishes
+    pub fn update_playback_state(&mut self, state: &mut crate::app::PlaybackState) {
+        // Check if playback has finished
+        if self.is_playing() && self.is_finished() {
+            // Auto-stop when all tracks finish
+            self.stop();
+        }
+
         state.position = self.position().as_secs_f64();
         state.duration = self.duration().as_secs_f64();
         state.is_playing = self.is_playing();
