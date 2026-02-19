@@ -1,0 +1,10 @@
+# Tanukioke Configuration File
+# Copy this to ~/.config/tanukioke/config.toml (Linux/macOS)
+# or %APPDATA%/tanukioke/config.toml (Windows)
+
+# Path to your karaoke library
+# This should point to a directory containing song folders
+# Each song folder should have:
+#   - A .lrx file with lyrics and metadata
+#   - One or more audio files (mp3, flac, wav, ogg)
+library_path = "./library"

@@ -170,19 +170,20 @@ fn parse_dot_notation(lrx: &mut LrxFile, key: &str, value: &str) -> Result<()> {
     }
 
     let category = parts[0]; // "track" or "part"
-    let rest = parts[1]; // "id:property" -> need to split this
+    let id = parts[1]; // just the id
 
-    let id_and_prop: Vec<&str> = rest.splitn(2, ':').collect();
-    if id_and_prop.len() != 2 {
-        return Err(anyhow!("Invalid dot notation format: {}", key));
+    // Value should be "property=value"
+    let prop_value: Vec<&str> = value.splitn(2, '=').collect();
+    if prop_value.len() != 2 {
+        return Err(anyhow!("Invalid dot notation value format: {}", value));
     }
 
-    let id = id_and_prop[0];
-    let property = id_and_prop[1];
+    let property = prop_value[0];
+    let actual_value = prop_value[1];
 
     match category {
-        "track" => parse_track_property(lrx, id, property, value)?,
-        "part" => parse_part_property(lrx, id, property, value)?,
+        "track" => parse_track_property(lrx, id, property, actual_value)?,
+        "part" => parse_part_property(lrx, id, property, actual_value)?,
         _ => return Err(anyhow!("Unknown category: {}", category)),
     }
 
