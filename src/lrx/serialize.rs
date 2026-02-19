@@ -58,10 +58,6 @@ fn serialize_part(id: &str, part: &Part) -> String {
     output.push_str(&format!("[part.{}:name={}]\n", id, part.name));
     output.push_str(&format!("[part.{}:color={}]\n", id, serialize_color(part.color)));
 
-    if let Some(bg_color) = part.background_color {
-        output.push_str(&format!("[part.{}:background_color={}]\n", id, serialize_color(bg_color)));
-    }
-
     output
 }
 

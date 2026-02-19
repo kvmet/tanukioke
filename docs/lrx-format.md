@@ -41,10 +41,12 @@ Standard LRC metadata tags using square bracket notation:
 
 ### Color Hierarchy
 
-Colors follow a fallback hierarchy:
-1. **Part-specific colors** (if line has a part tag and part defines colors)
-2. **Global colors** (if `color` or `background_color` tags are set)
+Text colors follow a fallback hierarchy:
+1. **Part-specific color** (if line has a part tag and part defines a color)
+2. **Global color** (if `color` tag is set)
 3. **Application defaults** (from config)
+
+Note: `background_color` is only supported as a global setting (for the entire window), not per-part or per-line.
 
 ## Track Definitions
 
@@ -92,14 +94,12 @@ Parts define vocal roles with custom styling. Uses dot notation:
 |----------|------|-------------|---------|
 | `name` | string | Display name for the part | Required |
 | `color` | hex color | Foreground/text color | `#FFFFFF` |
-| `background_color` | hex color | Background color (optional) | None |
 
 ### Example
 
 ```
 [part.lead:name=Lead Vocal]
 [part.lead:color=#FF6B9D]
-[part.lead:background_color=#000000]
 
 [part.harmony:name=Harmony]
 [part.harmony:color=#6B9DFF]

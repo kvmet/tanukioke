@@ -85,11 +85,9 @@ fn test_library() -> anyhow::Result<()> {
                             // Parts
                             println!("    Parts: {} part(s)", lrx.parts.len());
                             for (id, part) in &lrx.parts {
-                                println!("      - [{}] {} (fg: #{:02X}{:02X}{:02X}{})",
+                                println!("      - [{}] {} (color: #{:02X}{:02X}{:02X})",
                                     id, part.name,
-                                    part.color.r(), part.color.g(), part.color.b(),
-                                    part.background_color.map(|c| format!(", bg: #{:02X}{:02X}{:02X}", c.r(), c.g(), c.b()))
-                                        .unwrap_or_default());
+                                    part.color.r(), part.color.g(), part.color.b());
                             }
 
                             // Lyrics

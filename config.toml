@@ -1,16 +1,9 @@
 # Tanukioke Configuration File
-# Copy this to ~/.config/tanukioke/config.toml (Linux/macOS)
-# or %APPDATA%/tanukioke/config.toml (Windows)
 
 # Path to your karaoke library
-# This should point to a directory containing song folders
-# Each song folder should have:
-#   - A .lrx file with lyrics and metadata
-#   - One or more audio files (mp3, flac, wav, ogg)
 library_path = "./library"
 
 # Lyrics Display Settings
-# Adjust these to customize how lyrics appear in the lyrics window
 
 # Opacity for the current (active) lyric line (0.0 - 1.0)
 lyrics_opacity_current = 1.0
@@ -18,22 +11,20 @@ lyrics_opacity_current = 1.0
 # Opacity for upcoming lyric lines (0.0 - 1.0)
 lyrics_opacity_upcoming = 0.7
 
-# Opacity for past lyric lines that have already been sung (0.0 - 1.0)
+# Opacity for past lyric lines (0.0 - 1.0)
 lyrics_opacity_past = 0.4
 
 # Font size for lyrics in points
-lyrics_font_size = 36.0
+lyrics_font_size = 128.0
 
 # Spacing between lyric lines in pixels
-lyrics_line_spacing = 16.0
+lyrics_line_spacing = 64.0
 
 # Font weight for lyrics (400 = normal, 700 = bold)
-# Values >= 600 will render as bold
-lyrics_font_weight = 400.0
+lyrics_font_weight = 700.0
 
 # Default foreground (text) color in hex format
 lyrics_default_fg_color = "#FFFFFF"
 
 # Default background color for the lyrics window (optional)
-# Uncomment to set a background color
 # lyrics_default_bg_color = "#000000"

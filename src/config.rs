@@ -23,6 +23,9 @@ pub struct Config {
     #[serde(default = "default_line_spacing")]
     pub lyrics_line_spacing: f32,
 
+    #[serde(default = "default_font_weight")]
+    pub lyrics_font_weight: f32,
+
     #[serde(default = "default_fg_color")]
     pub lyrics_default_fg_color: String,
 
@@ -35,6 +38,7 @@ fn default_opacity_upcoming() -> f32 { 0.7 }
 fn default_opacity_past() -> f32 { 0.4 }
 fn default_font_size() -> f32 { 36.0 }
 fn default_line_spacing() -> f32 { 16.0 }
+fn default_font_weight() -> f32 { 400.0 }
 fn default_fg_color() -> String { "#FFFFFF".to_string() }
 fn default_bg_color() -> Option<String> { None }
 
@@ -47,6 +51,7 @@ impl Default for Config {
             lyrics_opacity_past: default_opacity_past(),
             lyrics_font_size: default_font_size(),
             lyrics_line_spacing: default_line_spacing(),
+            lyrics_font_weight: default_font_weight(),
             lyrics_default_fg_color: default_fg_color(),
             lyrics_default_bg_color: default_bg_color(),
         }

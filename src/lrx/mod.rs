@@ -29,7 +29,6 @@ pub struct Part {
     pub id: String,
     pub name: String,
     pub color: Color32,
-    pub background_color: Option<Color32>,
 }
 
 impl Part {
@@ -38,16 +37,14 @@ impl Part {
             id,
             name,
             color: Color32::WHITE,
-            background_color: None,
         }
     }
 
-    pub fn with_colors(id: String, name: String, color: Color32, background_color: Option<Color32>) -> Self {
+    pub fn with_color(id: String, name: String, color: Color32) -> Self {
         Self {
             id,
             name,
             color,
-            background_color,
         }
     }
 }

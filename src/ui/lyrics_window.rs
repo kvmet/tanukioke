@@ -101,15 +101,14 @@ impl LyricsWindow {
                                 self.config.lyrics_opacity_upcoming
                             };
 
-                            let text = egui::RichText::new(&line.text)
+                            let mut text = egui::RichText::new(&line.text)
                                 .size(font_size)
                                 .color(fg_color.linear_multiply(opacity));
 
-                            let text = if is_current {
-                                text.strong()
-                            } else {
-                                text
-                            };
+                            // Apply global font weight uniformly to all lines
+                            if self.config.lyrics_font_weight >= 600.0 {
+                                text = text.strong();
+                            }
 
                             ui.label(text);
 

@@ -222,13 +222,11 @@ fn parse_part_property(lrx: &mut LrxFile, id: &str, property: &str, value: &str)
         id: id.to_string(),
         name: String::new(),
         color: Color32::WHITE,
-        background_color: None,
     });
 
     match property {
         "name" => part.name = value.to_string(),
         "color" => part.color = parse_color(value)?,
-        "background_color" => part.background_color = Some(parse_color(value)?),
         _ => return Err(anyhow!("Unknown part property: {}", property)),
     }
 
