@@ -3,6 +3,7 @@ mod audio;
 mod config;
 mod library;
 mod lrc;
+mod queue;
 mod ui;
 
 use eframe::egui;
