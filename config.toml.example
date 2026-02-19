@@ -8,3 +8,18 @@
 #   - A .lrx file with lyrics and metadata
 #   - One or more audio files (mp3, flac, wav, ogg)
 library_path = "./library"
+
+# Lyrics Display Settings
+# Adjust these to customize how lyrics appear in the lyrics window
+
+# Opacity for the current (active) lyric line (0.0 - 1.0)
+lyrics_opacity_current = 1.0
+
+# Opacity for upcoming lyric lines (0.0 - 1.0)
+lyrics_opacity_upcoming = 0.7
+
+# Opacity for past lyric lines that have already been sung (0.0 - 1.0)
+lyrics_opacity_past = 0.4
+
+# Font size for lyrics in points
+lyrics_font_size = 36.0

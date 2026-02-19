@@ -6,12 +6,34 @@ use anyhow::{Context, Result};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub library_path: Option<String>,
+
+    // Lyrics display settings
+    #[serde(default = "default_opacity_current")]
+    pub lyrics_opacity_current: f32,
+
+    #[serde(default = "default_opacity_upcoming")]
+    pub lyrics_opacity_upcoming: f32,
+
+    #[serde(default = "default_opacity_past")]
+    pub lyrics_opacity_past: f32,
+
+    #[serde(default = "default_font_size")]
+    pub lyrics_font_size: f32,
 }
+
+fn default_opacity_current() -> f32 { 1.0 }
+fn default_opacity_upcoming() -> f32 { 0.7 }
+fn default_opacity_past() -> f32 { 0.4 }
+fn default_font_size() -> f32 { 36.0 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             library_path: None,
+            lyrics_opacity_current: default_opacity_current(),
+            lyrics_opacity_upcoming: default_opacity_upcoming(),
+            lyrics_opacity_past: default_opacity_past(),
+            lyrics_font_size: default_font_size(),
         }
     }
 }

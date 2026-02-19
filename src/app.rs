@@ -31,15 +31,19 @@ impl PlaybackState {
 pub struct App {
     pub playback_state: Arc<Mutex<PlaybackState>>,
     show_lyrics_window: bool,
-    lyrics: Option<crate::lrx::LrxFile>,
+    lyrics_window: Option<crate::ui::lyrics_window::LyricsWindow>,
+    config: crate::config::Config,
 }
 
 impl App {
     pub fn new() -> Self {
+        let config = crate::config::Config::load().unwrap_or_default();
+
         Self {
             playback_state: Arc::new(Mutex::new(PlaybackState::new())),
             show_lyrics_window: false,
-            lyrics: None,
+            lyrics_window: None,
+            config,
         }
     }
 
@@ -55,95 +59,31 @@ impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Show lyrics window as a separate viewport if requested
         if self.show_lyrics_window {
-            let state = self.playback_state.lock().unwrap();
-            let current_position = state.position;
-            let duration = state.duration;
-            drop(state);
+            if let Some(mut lyrics_window) = self.lyrics_window.take() {
+                let mut should_close = false;
 
-            let mut close_window = false;
+                ctx.show_viewport_immediate(
+                    egui::ViewportId::from_hash_of("lyrics_window"),
+                    egui::ViewportBuilder::default()
+                        .with_title("Lyrics")
+                        .with_inner_size([800.0, 600.0]),
+                    |ctx, _class| {
+                        let window_height = ctx.screen_rect().height();
 
-            ctx.show_viewport_immediate(
-                egui::ViewportId::from_hash_of("lyrics_window"),
-                egui::ViewportBuilder::default()
-                    .with_title("Lyrics")
-                    .with_inner_size([800.0, 600.0]),
-                |ctx, _class| {
-                    egui::CentralPanel::default().show(ctx, |ui| {
-                        ui.style_mut().visuals.panel_fill = egui::Color32::from_rgb(20, 20, 30);
-
-                        ui.vertical_centered(|ui| {
-                            ui.add_space(50.0);
-
-                            if let Some(lyrics) = &self.lyrics {
-                                let current_line = self.find_current_line_index(current_position);
-
-                                for (i, line) in lyrics.lines.iter().enumerate() {
-                                    let is_current = Some(i) == current_line;
-
-                                    let (fg_color, _bg_color) = if let Some(part_id) = &line.part_id {
-                                        if let Some(part) = lyrics.get_part(part_id) {
-                                            (part.fg_color, part.bg_color)
-                                        } else {
-                                            (egui::Color32::WHITE, None)
-                                        }
-                                    } else {
-                                        (egui::Color32::WHITE, None)
-                                    };
-
-                                    let text = if is_current {
-                                        egui::RichText::new(&line.text)
-                                            .size(48.0)
-                                            .color(fg_color)
-                                            .strong()
-                                    } else {
-                                        egui::RichText::new(&line.text)
-                                            .size(32.0)
-                                            .color(fg_color.linear_multiply(0.5))
-                                    };
-
-                                    ui.label(text);
-                                }
-                            } else {
-                                ui.heading("No lyrics loaded");
-                            }
-                        });
-                    });
-
-                    egui::TopBottomPanel::bottom("progress").show(ctx, |ui| {
-                        ui.add_space(10.0);
-
-                        let progress = if duration > 0.0 {
-                            (current_position / duration) as f32
-                        } else {
-                            0.0
-                        };
-
-                        ui.add(
-                            egui::ProgressBar::new(progress)
-                                .show_percentage()
-                                .animate(true)
-                        );
-
-                        ui.horizontal(|ui| {
-                            let minutes = (current_position / 60.0).floor() as i32;
-                            let secs = (current_position % 60.0).floor() as i32;
-                            let total_minutes = (duration / 60.0).floor() as i32;
-                            let total_secs = (duration % 60.0).floor() as i32;
-
-                            ui.label(format!("{:02}:{:02} / {:02}:{:02}", minutes, secs, total_minutes, total_secs));
+                        egui::CentralPanel::default().show(ctx, |ui| {
+                            ui.style_mut().visuals.panel_fill = egui::Color32::from_rgb(20, 20, 30);
                         });
 
-                        ui.add_space(10.0);
-                    });
+                        should_close = lyrics_window.render(ctx, window_height);
+                    },
+                );
 
-                    if ctx.input(|i| i.viewport().close_requested()) {
-                        close_window = true;
-                    }
-                },
-            );
-
-            if close_window {
-                self.show_lyrics_window = false;
+                if should_close {
+                    self.show_lyrics_window = false;
+                    // lyrics_window is dropped
+                } else {
+                    self.lyrics_window = Some(lyrics_window);
+                }
             }
         }
 
@@ -302,7 +242,13 @@ impl eframe::App for App {
                                                                 }
                                                                 drop(state);
 
-                                                                self.lyrics = Some(lrx);
+                                                                self.lyrics_window = Some(
+                                                                    crate::ui::lyrics_window::LyricsWindow::new(
+                                                                        self.playback_state.clone(),
+                                                                        Some(lrx),
+                                                                        self.config.clone()
+                                                                    )
+                                                                );
                                                                 self.show_lyrics_window = true;
                                                             }
                                                             Err(e) => eprintln!("Failed to parse LRX file: {}", e),
@@ -331,14 +277,4 @@ impl eframe::App for App {
 }
 
 impl App {
-    fn find_current_line_index(&self, current_position: f64) -> Option<usize> {
-        if let Some(lyrics) = &self.lyrics {
-            for (i, line) in lyrics.lines.iter().enumerate().rev() {
-                if line.timestamp <= current_position {
-                    return Some(i);
-                }
-            }
-        }
-        None
-    }
 }
