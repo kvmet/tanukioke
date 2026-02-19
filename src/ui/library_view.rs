@@ -48,7 +48,6 @@ pub fn render(ui: &mut egui::Ui, songs: &[Song], is_playing: bool) -> Option<Lib
             .body(|mut body| {
                 for song in songs {
                     let metadata = song.get_metadata();
-                    let title = song.title();
                     let lrx_path = song.lrx_path.clone();
 
                     body.row(20.0, |mut row| {
@@ -67,7 +66,11 @@ pub fn render(ui: &mut egui::Ui, songs: &[Song], is_playing: bool) -> Option<Lib
                             });
                         });
                         row.col(|ui| {
-                            ui.label(&title);
+                            ui.label(if metadata.title.is_empty() {
+                                song.title()
+                            } else {
+                                metadata.title
+                            });
                         });
                         row.col(|ui| {
                             ui.horizontal(|ui| {

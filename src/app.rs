@@ -173,95 +173,79 @@ impl eframe::App for App {
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Tanukioke");
-            ui.label("Karaoke player");
+            // Top section - Player controls
+            egui::TopBottomPanel::top("player_panel").show_inside(ui, |ui| {
+                ui.heading("Tanukioke");
+                ui.separator();
 
-            ui.separator();
-            ui.add_space(20.0);
+                // Player controls
+                crate::ui::player::render(ui, &self.audio_engine, &self.playback_state);
 
-            // Player controls
-            crate::ui::player::render(ui, &self.audio_engine, &self.playback_state);
-
-            ui.add_space(20.0);
-
-            // Button to toggle lyrics window
-            if ui.button("🎤 Open Lyrics Window").clicked() {
-                self.show_lyrics_window = true;
-            }
-
-            ui.separator();
-            ui.add_space(20.0);
-
-            // Library view
-            ui.collapsing("Library", |ui| {
-                let is_playing = {
-                    let state = self.playback_state.lock().unwrap();
-                    state.is_playing
-                };
-
-                if let Some(action) = crate::ui::library_view::render(ui, &self.library_songs, is_playing) {
-                    match action {
-                        crate::ui::library_view::LibraryAction::Load(path) => {
-                            match self.load_song(path) {
-                                Ok(_) => {
-                                    self.show_lyrics_window = true;
-                                }
-                                Err(e) => {
-                                    eprintln!("Failed to load song: {}", e);
-                                }
-                            }
-                        }
-                        crate::ui::library_view::LibraryAction::Enqueue(path) => {
-                            // TODO: Implement queue functionality
-                            println!("Enqueue not yet implemented: {:?}", path);
-                        }
+                ui.horizontal(|ui| {
+                    if ui.button("🎤 Open Lyrics Window").clicked() {
+                        self.show_lyrics_window = true;
                     }
-                }
+                });
             });
 
-            ui.separator();
-            ui.add_space(20.0);
+            // Bottom section - Library (1/2), LRX Editor (1/4), and Queue (1/4)
+            egui::CentralPanel::default().show_inside(ui, |ui| {
+                ui.horizontal(|ui| {
+                    // Library view - 1/2 width
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(ui.available_width() * 0.5, ui.available_height()),
+                        egui::Layout::top_down(egui::Align::Min),
+                        |ui| {
+                            let is_playing = {
+                                let state = self.playback_state.lock().unwrap();
+                                state.is_playing
+                            };
 
-            // Debug controls for testing
-            ui.collapsing("Debug Controls", |ui| {
-                ui.label("Load a song from the library:");
-
-                if ui.button("📁 Load Random Song").clicked() {
-                    if let Some(library_path) = &self.config.library_path {
-                        match crate::library::scan_library(library_path) {
-                            Ok(songs) => {
-                                let songs_with_lrx: Vec<_> = songs.iter()
-                                    .filter(|s| s.lrx_path.is_some())
-                                    .collect();
-
-                                if songs_with_lrx.is_empty() {
-                                    eprintln!("No songs with LRX files found in library");
-                                } else {
-                                    // Pick a random song
-                                    use std::collections::hash_map::RandomState;
-                                    use std::hash::{BuildHasher, Hash, Hasher};
-                                    let s = RandomState::new();
-                                    let mut hasher = s.build_hasher();
-                                    std::time::SystemTime::now().hash(&mut hasher);
-                                    let index = (hasher.finish() as usize) % songs_with_lrx.len();
-
-                                    if let Some(lrx_path) = &songs_with_lrx[index].lrx_path {
-                                        match self.load_song(lrx_path.clone()) {
+                            if let Some(action) = crate::ui::library_view::render(ui, &self.library_songs, is_playing) {
+                                match action {
+                                    crate::ui::library_view::LibraryAction::Load(path) => {
+                                        match self.load_song(path) {
                                             Ok(_) => {
-                                                println!("Loaded: {}", songs_with_lrx[index].title());
                                                 self.show_lyrics_window = true;
                                             }
-                                            Err(e) => eprintln!("Failed to load song: {}", e),
+                                            Err(e) => {
+                                                eprintln!("Failed to load song: {}", e);
+                                            }
                                         }
+                                    }
+                                    crate::ui::library_view::LibraryAction::Enqueue(path) => {
+                                        // TODO: Implement queue functionality
+                                        println!("Enqueue not yet implemented: {:?}", path);
                                     }
                                 }
                             }
-                            Err(e) => eprintln!("Failed to scan library: {}", e),
-                        }
-                    } else {
-                        eprintln!("No library path configured");
-                    }
-                }
+                        },
+                    );
+
+                    ui.separator();
+
+                    // LRX Editor view - 1/4 width
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(ui.available_width() * 0.5, ui.available_height()),
+                        egui::Layout::top_down(egui::Align::Min),
+                        |ui| {
+                            crate::ui::lrx_editor::render(ui);
+                        },
+                    );
+
+                    ui.separator();
+
+                    // Queue view - 1/4 width
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(ui.available_width(), ui.available_height()),
+                        egui::Layout::top_down(egui::Align::Min),
+                        |ui| {
+                            ui.heading("Queue");
+                            ui.separator();
+                            ui.label("Queue functionality coming soon...");
+                        },
+                    );
+                });
             });
         });
 

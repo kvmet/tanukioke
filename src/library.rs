@@ -7,6 +7,7 @@ use anyhow::{Context, Result};
 pub struct SongMetadata {
     pub artist: String,
     pub album: String,
+    pub title: String,
 }
 
 #[derive(Debug, Clone)]
@@ -67,6 +68,7 @@ impl Song {
                     SongMetadata {
                         artist: lrx.metadata.get("ar").cloned().unwrap_or_default(),
                         album: lrx.metadata.get("al").cloned().unwrap_or_default(),
+                        title: lrx.metadata.get("ti").cloned().unwrap_or_default(),
                     }
                 } else {
                     SongMetadata::default()
