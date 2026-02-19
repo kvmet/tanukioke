@@ -92,7 +92,7 @@ pub fn render(
                 ui.label(&track.name);
                 ui.add_space(10.0);
 
-                let mut volume = track.volume();
+                let mut volume = track.get_volume();
                 if ui.add(egui::Slider::new(&mut volume, 0.0..=1.0)
                     .text("Vol")
                     .fixed_decimals(2))

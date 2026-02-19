@@ -11,15 +11,18 @@ pub struct TrackSink {
     pub name: String,
     pub sink: Sink,
     pub duration: Duration,
+    pub source: PathBuf,
+    pub volume: f32,
 }
 
 impl TrackSink {
-    pub fn set_volume(&self, volume: f32) {
+    pub fn set_volume(&mut self, volume: f32) {
+        self.volume = volume;
         self.sink.set_volume(volume);
     }
 
-    pub fn volume(&self) -> f32 {
-        self.sink.volume()
+    pub fn get_volume(&self) -> f32 {
+        self.volume
     }
 }
 
@@ -29,6 +32,7 @@ pub struct AudioEngine {
     playback_start: Option<Instant>,
     paused_at: Option<Duration>,
     base_dir: Option<PathBuf>,
+    seek_position: Option<Duration>,
 }
 
 impl AudioEngine {
@@ -42,6 +46,7 @@ impl AudioEngine {
             playback_start: None,
             paused_at: None,
             base_dir: None,
+            seek_position: None,
         })
     }
 
@@ -54,6 +59,7 @@ impl AudioEngine {
         self.tracks.clear();
         self.playback_start = None;
         self.paused_at = None;
+        self.seek_position = None;
 
         let mut max_duration = Duration::ZERO;
 
@@ -91,6 +97,8 @@ impl AudioEngine {
                 name,
                 sink,
                 duration,
+                source: path,
+                volume,
             });
         }
 
@@ -102,7 +110,15 @@ impl AudioEngine {
             return;
         }
 
-        if let Some(paused_at) = self.paused_at.take() {
+        // If we have a seek position, reload tracks at that position
+        if let Some(seek_pos) = self.seek_position.take() {
+            if self.reload_at_position(seek_pos).is_err() {
+                eprintln!("Failed to seek to position");
+                return;
+            }
+            self.playback_start = Some(Instant::now() - seek_pos);
+            self.paused_at = None;
+        } else if let Some(paused_at) = self.paused_at.take() {
             // Resume from pause
             self.playback_start = Some(Instant::now() - paused_at);
         } else {
@@ -110,9 +126,39 @@ impl AudioEngine {
             self.playback_start = Some(Instant::now());
         }
 
+        // Start all tracks simultaneously
         for track in &self.tracks {
             track.sink.play();
         }
+    }
+
+    fn reload_at_position(&mut self, position: Duration) -> Result<()> {
+        // Stop and clear all sinks
+        for track in &self.tracks {
+            track.sink.stop();
+        }
+
+        // Reload all tracks at the seek position
+        for track in &mut self.tracks {
+            let file = File::open(&track.source)
+                .with_context(|| format!("Failed to open audio file: {}", track.source.display()))?;
+            let buf_reader = BufReader::new(file);
+            let source = Decoder::new(buf_reader)
+                .with_context(|| format!("Failed to decode audio file: {}", track.source.display()))?;
+
+            // Skip to position
+            let source = source.skip_duration(position);
+
+            // Create new sink
+            let new_sink = Sink::connect_new(&self.stream_handle.mixer());
+            new_sink.set_volume(track.volume);
+            new_sink.append(source);
+            new_sink.pause(); // Will be unpaused by play()
+
+            track.sink = new_sink;
+        }
+
+        Ok(())
     }
 
     pub fn pause(&mut self) {
@@ -135,16 +181,13 @@ impl AudioEngine {
     }
 
     pub fn seek(&mut self, position: Duration) -> Result<()> {
-        // Rodio doesn't support seeking on Sink directly
-        // We need to reload tracks and skip to position
-        // For now, just update the internal position tracking
-        let was_playing = self.is_playing();
+        // Always pause on seek
+        self.pause();
 
-        if was_playing {
-            self.playback_start = Some(Instant::now() - position);
-        } else {
-            self.paused_at = Some(position);
-        }
+        // Store the seek position for next play
+        self.seek_position = Some(position);
+        self.paused_at = Some(position);
+        self.playback_start = None;
 
         Ok(())
     }
@@ -182,10 +225,6 @@ impl AudioEngine {
 
     pub fn tracks_mut(&mut self) -> &mut [TrackSink] {
         &mut self.tracks
-    }
-
-    pub fn get_track_mut(&mut self, id: &str) -> Option<&mut TrackSink> {
-        self.tracks.iter_mut().find(|t| t.id == id)
     }
 }
 
