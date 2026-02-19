@@ -34,6 +34,7 @@ pub struct App {
     show_lyrics_window: bool,
     lyrics_window: Option<crate::ui::lyrics_window::LyricsWindow>,
     config: crate::config::Config,
+    library_songs: Vec<crate::library::Song>,
 }
 
 impl App {
@@ -46,12 +47,30 @@ impl App {
         let playback_state = Arc::new(Mutex::new(PlaybackState::new()));
         let audio_engine = Arc::new(Mutex::new(audio_engine));
 
+        // Scan library on startup
+        let library_songs = if let Some(library_path) = &config.library_path {
+            match crate::library::scan_library(library_path) {
+                Ok(songs) => {
+                    println!("Scanned library: found {} songs", songs.len());
+                    songs
+                }
+                Err(e) => {
+                    eprintln!("Failed to scan library: {}", e);
+                    Vec::new()
+                }
+            }
+        } else {
+            println!("No library path configured");
+            Vec::new()
+        };
+
         Self {
             playback_state,
             audio_engine,
             show_lyrics_window: false,
             lyrics_window: None,
             config,
+            library_songs,
         }
     }
 
@@ -169,6 +188,36 @@ impl eframe::App for App {
             if ui.button("🎤 Open Lyrics Window").clicked() {
                 self.show_lyrics_window = true;
             }
+
+            ui.separator();
+            ui.add_space(20.0);
+
+            // Library view
+            ui.collapsing("Library", |ui| {
+                let is_playing = {
+                    let state = self.playback_state.lock().unwrap();
+                    state.is_playing
+                };
+
+                if let Some(action) = crate::ui::library_view::render(ui, &self.library_songs, is_playing) {
+                    match action {
+                        crate::ui::library_view::LibraryAction::Load(path) => {
+                            match self.load_song(path) {
+                                Ok(_) => {
+                                    self.show_lyrics_window = true;
+                                }
+                                Err(e) => {
+                                    eprintln!("Failed to load song: {}", e);
+                                }
+                            }
+                        }
+                        crate::ui::library_view::LibraryAction::Enqueue(path) => {
+                            // TODO: Implement queue functionality
+                            println!("Enqueue not yet implemented: {:?}", path);
+                        }
+                    }
+                }
+            });
 
             ui.separator();
             ui.add_space(20.0);

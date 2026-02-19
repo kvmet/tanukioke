@@ -1,6 +1,13 @@
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use walkdir::WalkDir;
 use anyhow::{Context, Result};
+
+#[derive(Debug, Clone, Default)]
+pub struct SongMetadata {
+    pub artist: String,
+    pub album: String,
+}
 
 #[derive(Debug, Clone)]
 pub struct Track {
@@ -22,6 +29,7 @@ pub struct Song {
     pub folder: PathBuf,
     pub tracks: Vec<Track>,
     pub lrx_path: Option<PathBuf>,
+    metadata_cache: Arc<Mutex<Option<SongMetadata>>>,
 }
 
 impl Song {
@@ -30,6 +38,7 @@ impl Song {
             folder,
             tracks: Vec::new(),
             lrx_path: None,
+            metadata_cache: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -39,6 +48,39 @@ impl Song {
             .and_then(|n| n.to_str())
             .unwrap_or("Unknown")
             .to_string()
+    }
+
+    /// Get metadata (artist, album) from the LRX file, with caching
+    pub fn get_metadata(&self) -> SongMetadata {
+        // Check cache first
+        {
+            let cache = self.metadata_cache.lock().unwrap();
+            if let Some(metadata) = cache.as_ref() {
+                return metadata.clone();
+            }
+        }
+
+        // Parse LRX file to extract metadata
+        let metadata = if let Some(lrx_path) = &self.lrx_path {
+            if let Ok(content) = std::fs::read_to_string(lrx_path) {
+                if let Ok(lrx) = crate::lrx::LrxFile::parse(&content) {
+                    SongMetadata {
+                        artist: lrx.metadata.get("ar").cloned().unwrap_or_default(),
+                        album: lrx.metadata.get("al").cloned().unwrap_or_default(),
+                    }
+                } else {
+                    SongMetadata::default()
+                }
+            } else {
+                SongMetadata::default()
+            }
+        } else {
+            SongMetadata::default()
+        };
+
+        // Cache it
+        *self.metadata_cache.lock().unwrap() = Some(metadata.clone());
+        metadata
     }
 }
 
