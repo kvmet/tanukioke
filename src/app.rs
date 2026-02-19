@@ -207,7 +207,9 @@ impl eframe::App for App {
 
             // Bottom section - Library (1/2), LRX Editor (1/4), and Queue (1/4)
             egui::CentralPanel::default().show_inside(ui, |ui| {
-                ui.horizontal(|ui| {
+                let available_height = ui.available_height();
+                ui.horizontal_top(|ui| {
+                    ui.set_min_height(available_height);
                     // Library view - 1/2 width
                     ui.allocate_ui_with_layout(
                         egui::vec2(ui.available_width() * 0.5, ui.available_height()),
@@ -350,9 +352,7 @@ impl eframe::App for App {
                                         self.add_manual_dialog = Some(crate::ui::queue::AddManualDialog::default());
                                         self.show_add_manual = true;
                                     }
-                                    crate::ui::queue::QueueAction::Clear => {
-                                        self.queue.clear();
-                                    }
+
                                 }
                             }
                         },

@@ -56,6 +56,7 @@ impl LyricsWindow {
 
         central_panel.show(ctx, |ui| {
             let scroll_area = egui::ScrollArea::vertical()
+                .id_salt("lyrics_scroll_area")
                 .auto_shrink([false; 2])
                 .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
                 .scroll_offset([0.0, scroll_y].into());

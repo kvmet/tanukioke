@@ -12,7 +12,6 @@ pub enum QueueAction {
     OpenUrl(String),
     CopyUrl(String),
     AddManual,
-    Clear,
 }
 
 // Dialog state structs
@@ -44,9 +43,6 @@ pub fn render(ui: &mut egui::Ui, queue: &Queue) -> Option<QueueAction> {
     ui.horizontal(|ui| {
         ui.heading("Queue");
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui.button("🗑 Clear All").clicked() {
-                action = Some(QueueAction::Clear);
-            }
             if ui.button("➕ Add").clicked() {
                 action = Some(QueueAction::AddManual);
             }
@@ -65,6 +61,7 @@ pub fn render(ui: &mut egui::Ui, queue: &Queue) -> Option<QueueAction> {
         });
     } else {
         egui::ScrollArea::vertical()
+            .id_salt("queue_scroll_area")
             .auto_shrink([false; 2])
             .show(ui, |ui| {
                 let num_entries = queue.entries.len();

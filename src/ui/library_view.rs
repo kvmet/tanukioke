@@ -83,7 +83,9 @@ pub fn render(ui: &mut egui::Ui, songs: &[Song], is_playing: bool, search_query:
         }).collect()
     };
 
-    egui::ScrollArea::vertical().show(ui, |ui| {
+    egui::ScrollArea::vertical()
+        .id_salt("library_scroll_area")
+        .show(ui, |ui| {
         use egui_extras::{TableBuilder, Column};
 
         TableBuilder::new(ui)
