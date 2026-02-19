@@ -168,15 +168,12 @@ impl LyricsWindow {
         let mut line_centers = Vec::new();
         let mut cumulative_y = window_height / 2.0; // Top padding
 
-        for (i, &height) in self.line_heights.iter().enumerate() {
+        for &height in self.line_heights.iter() {
             let line_center = cumulative_y + height / 2.0;
             line_centers.push(line_center);
 
+            // Height already includes egui's spacing
             cumulative_y += height;
-            // Add spacing only between items
-            if i < self.line_heights.len() - 1 {
-                cumulative_y += line_spacing;
-            }
         }
 
         // Find which two lyrics we're between
