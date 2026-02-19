@@ -49,15 +49,14 @@ impl App {
         let playback_state = Arc::new(Mutex::new(PlaybackState::new()));
         let audio_engine = Arc::new(Mutex::new(audio_engine));
 
-        // Scan library on startup
+        // Load library from registry or scan on startup
         let library_songs = if let Some(library_path) = &config.library_path {
-            match crate::library::scan_library(library_path) {
+            match crate::library::load_or_scan_library(library_path) {
                 Ok(songs) => {
-                    println!("Scanned library: found {} songs", songs.len());
                     songs
                 }
                 Err(e) => {
-                    eprintln!("Failed to scan library: {}", e);
+                    eprintln!("Failed to load library: {}", e);
                     Vec::new()
                 }
             }
@@ -232,6 +231,14 @@ impl eframe::App for App {
                                             match crate::library::scan_library(library_path) {
                                                 Ok(songs) => {
                                                     println!("Rescanned library: found {} songs", songs.len());
+
+                                                    // Save registry
+                                                    let library_path_buf = std::path::PathBuf::from(library_path);
+                                                    let registry_path = library_path_buf.join("library.toml");
+                                                    if let Err(e) = crate::library::save_registry(&registry_path, &songs) {
+                                                        eprintln!("Warning: Failed to save library registry: {}", e);
+                                                    }
+
                                                     self.library_songs = songs;
                                                 }
                                                 Err(e) => {
