@@ -1,18 +1,18 @@
 use eframe::egui;
 use crate::lrx::LrxFile;
+use crate::app::PlaybackState;
+use std::sync::{Arc, Mutex};
 
 pub struct LyricsWindow {
     pub lyrics: Option<LrxFile>,
-    pub current_position: f64, // seconds
-    pub duration: f64,         // total duration in seconds
+    pub playback_state: Arc<Mutex<PlaybackState>>,
 }
 
 impl LyricsWindow {
-    pub fn new() -> Self {
+    pub fn new(playback_state: Arc<Mutex<PlaybackState>>) -> Self {
         Self {
             lyrics: None,
-            current_position: 0.0,
-            duration: 0.0,
+            playback_state,
         }
     }
 
@@ -20,19 +20,11 @@ impl LyricsWindow {
         self.lyrics = Some(lyrics);
     }
 
-    pub fn update_position(&mut self, position: f64) {
-        self.current_position = position;
-    }
-
-    pub fn set_duration(&mut self, duration: f64) {
-        self.duration = duration;
-    }
-
-    fn find_current_line_index(&self) -> Option<usize> {
-        // TODO: Binary search for performance
+    fn find_current_line_index(&self, current_position: f64) -> Option<usize> {
+        // Binary search would be better for performance, but linear search works for now
         if let Some(lyrics) = &self.lyrics {
             for (i, line) in lyrics.lines.iter().enumerate().rev() {
-                if line.timestamp <= self.current_position {
+                if line.timestamp <= current_position {
                     return Some(i);
                 }
             }
@@ -43,16 +35,22 @@ impl LyricsWindow {
 
 impl eframe::App for LyricsWindow {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let state = self.playback_state.lock().unwrap();
+        let current_position = state.position;
+        let duration = state.duration;
+        drop(state); // Release lock early
+
         egui::CentralPanel::default().show(ctx, |ui| {
-            // TODO: Set background color (maybe from metadata?)
+            // Set dark background for better visibility
+            ui.style_mut().visuals.panel_fill = egui::Color32::from_rgb(20, 20, 30);
+
             ui.vertical_centered(|ui| {
                 ui.add_space(50.0);
 
                 if let Some(lyrics) = &self.lyrics {
-                    let current_line = self.find_current_line_index();
+                    let current_line = self.find_current_line_index(current_position);
 
                     // TODO: Show previous/next lines with reduced opacity
-                    // TODO: Display lines with their fg/bg colors
                     // TODO: Add smooth scrolling animation
                     // TODO: Handle word-by-word highlighting if supported
 
@@ -97,8 +95,8 @@ impl eframe::App for LyricsWindow {
         egui::TopBottomPanel::bottom("progress").show(ctx, |ui| {
             ui.add_space(10.0);
 
-            let progress = if self.duration > 0.0 {
-                (self.current_position / self.duration) as f32
+            let progress = if duration > 0.0 {
+                (current_position / duration) as f32
             } else {
                 0.0
             };
@@ -109,6 +107,16 @@ impl eframe::App for LyricsWindow {
                     .animate(true)
             );
 
+            // Time display
+            ui.horizontal(|ui| {
+                let minutes = (current_position / 60.0).floor() as i32;
+                let secs = (current_position % 60.0).floor() as i32;
+                let total_minutes = (duration / 60.0).floor() as i32;
+                let total_secs = (duration % 60.0).floor() as i32;
+
+                ui.label(format!("{:02}:{:02} / {:02}:{:02}", minutes, secs, total_minutes, total_secs));
+            });
+
             ui.add_space(10.0);
         });
 
@@ -117,9 +125,61 @@ impl eframe::App for LyricsWindow {
     }
 }
 
-pub fn spawn_lyrics_window() -> anyhow::Result<()> {
-    // TODO: Spawn secondary window
-    // TODO: Pass shared state for lyrics and position
-    // TODO: Handle window close events
+pub fn spawn_lyrics_window(playback_state: Arc<Mutex<PlaybackState>>) -> anyhow::Result<()> {
+    spawn_lyrics_window_with_file(playback_state, None)
+}
+
+/// Spawn a lyrics window, optionally loading an LRX file from the given path
+pub fn spawn_lyrics_window_with_file(
+    playback_state: Arc<Mutex<PlaybackState>>,
+    lrx_path: Option<std::path::PathBuf>,
+) -> anyhow::Result<()> {
+    use std::thread;
+
+    thread::spawn(move || {
+        let options = eframe::NativeOptions {
+            viewport: egui::ViewportBuilder::default()
+                .with_inner_size([800.0, 600.0])
+                .with_title("Lyrics"),
+            ..Default::default()
+        };
+
+        let _ = eframe::run_native(
+            "Lyrics",
+            options,
+            Box::new(move |_cc| {
+                let mut window = LyricsWindow::new(playback_state.clone());
+
+                // Load lyrics from file if path provided
+                if let Some(path) = lrx_path {
+                    match std::fs::read_to_string(&path) {
+                        Ok(content) => {
+                            match crate::lrx::LrxFile::parse(&content) {
+                                Ok(lrx) => {
+                                    window.load_lyrics(lrx);
+
+                                    // Set a default duration for testing if not already set
+                                    let mut state = window.playback_state.lock().unwrap();
+                                    if state.duration == 0.0 && !window.lyrics.as_ref().unwrap().lines.is_empty() {
+                                        // Set duration to last lyric timestamp + 10 seconds
+                                        let last_timestamp = window.lyrics.as_ref()
+                                            .and_then(|l| l.lines.last())
+                                            .map(|line| line.timestamp)
+                                            .unwrap_or(0.0);
+                                        state.duration = last_timestamp + 10.0;
+                                    }
+                                }
+                                Err(e) => eprintln!("Failed to parse LRX file: {}", e),
+                            }
+                        }
+                        Err(e) => eprintln!("Failed to read LRX file: {}", e),
+                    }
+                }
+
+                Ok(Box::new(window))
+            }),
+        );
+    });
+
     Ok(())
 }
