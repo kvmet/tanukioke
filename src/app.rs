@@ -37,6 +37,13 @@ pub struct App {
     library_songs: Vec<crate::library::Song>,
     library_search_query: String,
     show_rescan_confirm: bool,
+    queue: crate::queue::Queue,
+    show_add_manual: bool,
+    add_manual_dialog: Option<crate::ui::queue::AddManualDialog>,
+    show_add_from_library: bool,
+    add_from_library_dialog: Option<crate::ui::queue::AddFromLibraryDialog>,
+    show_edit_queue: bool,
+    edit_entry_dialog: Option<crate::ui::queue::EditEntryDialog>,
 }
 
 impl App {
@@ -74,6 +81,13 @@ impl App {
             library_songs,
             library_search_query: String::new(),
             show_rescan_confirm: false,
+            queue: crate::queue::Queue::new(),
+            show_add_manual: false,
+            add_manual_dialog: None,
+            show_add_from_library: false,
+            add_from_library_dialog: None,
+            show_edit_queue: false,
+            edit_entry_dialog: None,
         }
     }
 
@@ -223,8 +237,30 @@ impl eframe::App for App {
                                         }
                                     }
                                     crate::ui::library_view::LibraryAction::Enqueue(path) => {
-                                        // TODO: Implement queue functionality
-                                        println!("Enqueue not yet implemented: {:?}", path);
+                                        // Get song title from metadata
+                                        let song_title = if let Some(song) = self.library_songs.iter().find(|s| s.lrx_path.as_ref() == Some(&path)) {
+                                            let metadata = song.get_metadata();
+                                            if !metadata.title.is_empty() {
+                                                metadata.title.clone()
+                                            } else {
+                                                path.file_stem()
+                                                    .and_then(|s| s.to_str())
+                                                    .unwrap_or("Unknown")
+                                                    .to_string()
+                                            }
+                                        } else {
+                                            path.file_stem()
+                                                .and_then(|s| s.to_str())
+                                                .unwrap_or("Unknown")
+                                                .to_string()
+                                        };
+
+                                        self.add_from_library_dialog = Some(crate::ui::queue::AddFromLibraryDialog {
+                                            name: String::new(),
+                                            song_title,
+                                            path,
+                                        });
+                                        self.show_add_from_library = true;
                                     }
                                     crate::ui::library_view::LibraryAction::Rescan => {
                                         if let Some(library_path) = &self.config.library_path {
@@ -270,14 +306,88 @@ impl eframe::App for App {
                         egui::vec2(ui.available_width(), ui.available_height()),
                         egui::Layout::top_down(egui::Align::Min),
                         |ui| {
-                            ui.heading("Queue");
-                            ui.separator();
-                            ui.label("Queue functionality coming soon...");
+                            if let Some(action) = crate::ui::queue::render(ui, &self.queue) {
+                                match action {
+                                    crate::ui::queue::QueueAction::Load(path) => {
+                                        match self.load_song(path) {
+                                            Ok(_) => {
+                                                self.show_lyrics_window = true;
+                                            }
+                                            Err(e) => {
+                                                eprintln!("Failed to load song: {}", e);
+                                            }
+                                        }
+                                    }
+                                    crate::ui::queue::QueueAction::Edit(id) => {
+                                        if let Some(entry) = self.queue.get(id) {
+                                            self.edit_entry_dialog = Some(crate::ui::queue::EditEntryDialog {
+                                                id: entry.id,
+                                                name: entry.singer_name.clone(),
+                                                song: entry.song_title.clone(),
+                                                url: entry.url.clone().unwrap_or_default(),
+                                                is_library_entry: entry.lrx_path.is_some(),
+                                            });
+                                            self.show_edit_queue = true;
+                                        }
+                                    }
+                                    crate::ui::queue::QueueAction::Delete(id) => {
+                                        self.queue.remove(id);
+                                    }
+                                    crate::ui::queue::QueueAction::MoveUp(id) => {
+                                        self.queue.move_up(id);
+                                    }
+                                    crate::ui::queue::QueueAction::MoveDown(id) => {
+                                        self.queue.move_down(id);
+                                    }
+                                    crate::ui::queue::QueueAction::OpenUrl(url) => {
+                                        // TODO: Add 'open' crate to Cargo.toml to enable URL opening
+                                        println!("Open URL: {}", url);
+                                    }
+                                    crate::ui::queue::QueueAction::CopyUrl(url) => {
+                                        ctx.copy_text(url);
+                                    }
+                                    crate::ui::queue::QueueAction::AddManual => {
+                                        self.add_manual_dialog = Some(crate::ui::queue::AddManualDialog::default());
+                                        self.show_add_manual = true;
+                                    }
+                                    crate::ui::queue::QueueAction::Clear => {
+                                        self.queue.clear();
+                                    }
+                                }
+                            }
                         },
                     );
                 });
             });
         });
+
+        // Handle dialogs
+        if self.show_add_manual {
+            if let Some(dialog) = &mut self.add_manual_dialog {
+                if crate::ui::queue::render_add_manual_dialog(ctx, dialog, &mut self.queue) {
+                    self.show_add_manual = false;
+                    self.add_manual_dialog = None;
+                }
+            }
+        }
+
+        if self.show_add_from_library {
+            if let Some(dialog) = &mut self.add_from_library_dialog {
+                if crate::ui::queue::render_add_from_library_dialog(ctx, dialog, &mut self.queue) {
+                    self.show_add_from_library = false;
+                    self.add_from_library_dialog = None;
+                }
+            }
+        }
+
+        if self.show_edit_queue {
+            if let Some(dialog) = &mut self.edit_entry_dialog {
+                if crate::ui::queue::render_edit_entry_dialog(ctx, dialog, &mut self.queue) {
+                    self.show_edit_queue = false;
+                    self.edit_entry_dialog = None;
+                }
+            }
+        }
 
         // Request repaint for smooth UI updates
         ctx.request_repaint();
