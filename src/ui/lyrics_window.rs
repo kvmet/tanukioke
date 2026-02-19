@@ -8,8 +8,8 @@ pub struct LyricsWindow {
     playback_state: Arc<Mutex<PlaybackState>>,
     lyrics: Option<LrxFile>,
     config: Config,
-    // Store measured center Y positions for each lyric line from previous frame
-    line_positions: Vec<(usize, f32)>,
+    // Store center Y position in content space for each lyric line
+    line_centers: Vec<f32>,
 }
 
 impl LyricsWindow {
@@ -18,7 +18,7 @@ impl LyricsWindow {
             playback_state,
             lyrics,
             config,
-            line_positions: Vec::new(),
+            line_centers: Vec::new(),
         }
     }
 
@@ -28,11 +28,11 @@ impl LyricsWindow {
         let duration = state.duration;
         drop(state);
 
-        // Calculate scroll from previous frame's measurements
-        let scroll_y = self.calculate_scroll_from_measurements(current_position, window_height);
+        // First pass: measure line heights to build stable content-space positions
+        self.measure_line_positions(ctx, window_height);
 
-        // Clear line positions for this frame's measurements
-        self.line_positions.clear();
+        // Calculate scroll offset based on stable measurements
+        let scroll_y = self.calculate_scroll_offset(current_position, window_height);
 
         egui::CentralPanel::default().show(ctx, |ui| {
             let scroll_area = egui::ScrollArea::vertical()
@@ -49,13 +49,10 @@ impl LyricsWindow {
                         let current_line_idx = self.find_current_line_index(current_position);
                         let font_size = self.config.lyrics_font_size;
 
-                        // Render all lines and measure their positions
+                        // Render all lines
                         for (i, line) in lyrics.lines.iter().enumerate() {
                             let is_current = Some(i) == current_line_idx;
                             let is_past = current_line_idx.map(|c| i < c).unwrap_or(false);
-
-                            // Measure position before rendering
-                            let before_y = ui.cursor().top();
 
                             let (fg_color, _bg_color) = if let Some(part_id) = &line.part_id {
                                 if let Some(part) = lyrics.get_part(part_id) {
@@ -86,13 +83,6 @@ impl LyricsWindow {
                             };
 
                             ui.label(text);
-
-                            // Measure position after rendering - get center of the line
-                            let after_y = ui.cursor().top();
-                            let line_center_y = (before_y + after_y) / 2.0;
-
-                            // Store measured center position for this line
-                            self.line_positions.push((i, line_center_y));
                         }
                     } else {
                         ui.heading("No lyrics loaded");
@@ -149,15 +139,50 @@ impl LyricsWindow {
         None
     }
 
-    /// Calculate scroll position based on measured line center positions
-    /// Lerps between centers so each line arrives at viewport center at its timestamp
-    fn calculate_scroll_from_measurements(&self, current_position: f64, window_height: f32) -> f32 {
+    /// Measure line heights in content space (independent of scrolling)
+    fn measure_line_positions(&mut self, ctx: &egui::Context, window_height: f32) {
+        self.line_centers.clear();
+
+        let lyrics = match &self.lyrics {
+            Some(l) => l,
+            None => return,
+        };
+
+        if lyrics.lines.is_empty() {
+            return;
+        }
+
+        // Use egui's font system to measure heights without rendering
+        let mut cumulative_y = window_height / 2.0; // Start after top padding
+
+        for line in &lyrics.lines {
+            let font_size = self.config.lyrics_font_size;
+
+            // Use egui's font system to measure text height
+            let font_id = egui::FontId::proportional(font_size);
+            let galley = ctx.fonts(|fonts| {
+                fonts.layout_no_wrap(line.text.clone(), font_id, egui::Color32::WHITE)
+            });
+
+            let line_height = galley.rect.height();
+
+            // Center of this line in content space
+            let line_center = cumulative_y + line_height / 2.0;
+            self.line_centers.push(line_center);
+
+            // Move to next line position
+            cumulative_y += line_height;
+        }
+    }
+
+    /// Calculate scroll position to center the appropriate line based on time
+    fn calculate_scroll_offset(&self, current_position: f64, window_height: f32) -> f32 {
         let lyrics = match &self.lyrics {
             Some(l) => l,
             None => return 0.0,
         };
 
-        if lyrics.lines.is_empty() || self.line_positions.is_empty() {
+        if lyrics.lines.is_empty() || self.line_centers.is_empty() {
             return 0.0;
         }
 
@@ -174,54 +199,38 @@ impl LyricsWindow {
             }
         }
 
-        // Find measured center position for a line
-        let find_center_y = |idx: usize| -> Option<f32> {
-            self.line_positions.iter()
-                .find(|(i, _)| *i == idx)
-                .map(|(_, y)| *y)
-        };
-
-        let center_y = window_height / 2.0;
+        let viewport_center = window_height / 2.0;
 
         match (current_idx, next_idx) {
             (Some(current), Some(next)) => {
-                // Lerp between measured center positions
-                if let (Some(current_center), Some(next_center)) = (find_center_y(current), find_center_y(next)) {
-                    let current_time = lyrics.lines[current].timestamp;
-                    let next_time = lyrics.lines[next].timestamp;
-                    let time_range = next_time - current_time;
+                // Lerp between line centers based on time
+                let current_center = self.line_centers[current];
+                let next_center = self.line_centers[next];
 
-                    if time_range > 0.0 {
-                        let progress = ((current_position - current_time) / time_range) as f32;
-                        let progress = progress.clamp(0.0, 1.0);
+                let current_time = lyrics.lines[current].timestamp;
+                let next_time = lyrics.lines[next].timestamp;
+                let time_range = next_time - current_time;
 
-                        // Interpolate between the two center positions
-                        let target_center = current_center + (next_center - current_center) * progress;
+                if time_range > 0.0 {
+                    let progress = ((current_position - current_time) / time_range) as f32;
+                    let progress = progress.clamp(0.0, 1.0);
 
-                        // Scroll so that target_center is at viewport center
-                        target_center - center_y
-                    } else {
-                        current_center - center_y
-                    }
+                    // Interpolate between the two centers in content space
+                    let target_center = current_center + (next_center - current_center) * progress;
+
+                    // Scroll so that target_center is at viewport center
+                    target_center - viewport_center
                 } else {
-                    0.0
+                    current_center - viewport_center
                 }
             }
             (Some(current), None) => {
                 // At or past last lyric
-                if let Some(current_center) = find_center_y(current) {
-                    current_center - center_y
-                } else {
-                    0.0
-                }
+                self.line_centers[current] - viewport_center
             }
             (None, Some(next)) => {
-                // Before first lyric
-                if let Some(next_center) = find_center_y(next) {
-                    next_center - center_y
-                } else {
-                    0.0
-                }
+                // Before first lyric - stay at top
+                0.0
             }
             (None, None) => 0.0,
         }
