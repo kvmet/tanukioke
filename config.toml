@@ -6,4 +6,4 @@ lyrics_font_size = 64.0
 lyrics_line_spacing = 64.0
 lyrics_font_weight = 700.0
 lyrics_default_fg_color = "#FFFFFF"
-lyrics_snappiness = 10000.0
+lyrics_snappiness = 0.0

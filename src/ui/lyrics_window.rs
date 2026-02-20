@@ -235,8 +235,8 @@ impl LyricsWindow {
                     let eased_progress = if snappiness == 0.0 {
                         progress
                     } else if snappiness >= 10000.0 {
-                        // Instant snap at max snappiness
-                        1.0
+                        // Instant snap at max snappiness - stay at current line
+                        0.0
                     } else {
                         // Map snappiness to power: 1-99 becomes exponent 1.1 to 10.9
                         let exponent = 1.0 + (snappiness / 10.0);
