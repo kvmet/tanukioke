@@ -6,6 +6,7 @@ use crate::library::Song;
 pub enum LibraryAction {
     Load(PathBuf),
     Enqueue(PathBuf),
+    Edit(PathBuf),
     Rescan,
 }
 
@@ -153,6 +154,10 @@ pub fn render(ui: &mut egui::Ui, songs: &[Song], is_playing: bool, search_query:
 
                                     if ui.button("Enqueue").clicked() {
                                         action = Some(LibraryAction::Enqueue(path.clone()));
+                                    }
+
+                                    if ui.button("✏ Edit").clicked() {
+                                        action = Some(LibraryAction::Edit(path.clone()));
                                     }
                                 }
                             });

@@ -44,6 +44,8 @@ pub struct App {
     add_from_library_dialog: Option<crate::ui::queue::AddFromLibraryDialog>,
     show_edit_queue: bool,
     edit_entry_dialog: Option<crate::ui::queue::EditEntryDialog>,
+    show_editor_window: bool,
+    editor_lrx_path: Option<std::path::PathBuf>,
 }
 
 impl App {
@@ -88,6 +90,8 @@ impl App {
             add_from_library_dialog: None,
             show_edit_queue: false,
             edit_entry_dialog: None,
+            show_editor_window: false,
+            editor_lrx_path: None,
         }
     }
 
@@ -189,6 +193,36 @@ impl eframe::App for App {
             }
         }
 
+        // Show editor window as a separate viewport if requested
+        if self.show_editor_window {
+            let mut should_close = false;
+
+            ctx.show_viewport_immediate(
+                egui::ViewportId::from_hash_of("editor_window"),
+                egui::ViewportBuilder::default()
+                    .with_title("LRX Editor")
+                    .with_inner_size([800.0, 600.0]),
+                |ctx, _class| {
+                    egui::CentralPanel::default().show(ctx, |ui| {
+                        if ui.button("Close").clicked() {
+                            should_close = true;
+                        }
+                        ui.separator();
+                        crate::ui::lrx_editor::render(ui);
+                    });
+
+                    if ctx.input(|i| i.viewport().close_requested()) {
+                        should_close = true;
+                    }
+                },
+            );
+
+            if should_close {
+                self.show_editor_window = false;
+                self.editor_lrx_path = None;
+            }
+        }
+
         egui::CentralPanel::default().show(ctx, |ui| {
             // Top section - Player controls
             egui::TopBottomPanel::top("player_panel").show_inside(ui, |ui| {
@@ -205,14 +239,14 @@ impl eframe::App for App {
                 });
             });
 
-            // Bottom section - Library (1/2), LRX Editor (1/4), and Queue (1/4)
+            // Bottom section - Library (2/3) and Queue (1/3)
             egui::CentralPanel::default().show_inside(ui, |ui| {
                 let available_height = ui.available_height();
                 ui.horizontal_top(|ui| {
                     ui.set_min_height(available_height);
-                    // Library view - 1/2 width
+                    // Library view - 2/3 width
                     ui.allocate_ui_with_layout(
-                        egui::vec2(ui.available_width() * 0.5, ui.available_height()),
+                        egui::vec2(ui.available_width() * 2.0 / 3.0, ui.available_height()),
                         egui::Layout::top_down(egui::Align::Min),
                         |ui| {
                             let is_playing = {
@@ -285,6 +319,10 @@ impl eframe::App for App {
                                             }
                                         }
                                     }
+                                    crate::ui::library_view::LibraryAction::Edit(path) => {
+                                        self.editor_lrx_path = Some(path);
+                                        self.show_editor_window = true;
+                                    }
                                 }
                             }
                         },
@@ -292,18 +330,7 @@ impl eframe::App for App {
 
                     ui.separator();
 
-                    // LRX Editor view - 1/4 width
-                    ui.allocate_ui_with_layout(
-                        egui::vec2(ui.available_width() * 0.5, ui.available_height()),
-                        egui::Layout::top_down(egui::Align::Min),
-                        |ui| {
-                            crate::ui::lrx_editor::render(ui);
-                        },
-                    );
-
-                    ui.separator();
-
-                    // Queue view - 1/4 width
+                    // Queue view - 1/3 width
                     ui.allocate_ui_with_layout(
                         egui::vec2(ui.available_width(), ui.available_height()),
                         egui::Layout::top_down(egui::Align::Min),
