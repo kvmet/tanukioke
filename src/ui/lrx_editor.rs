@@ -1,5 +1,6 @@
 use eframe::egui;
 use std::path::PathBuf;
+use regex::Regex;
 
 pub struct EditorState {
     pub file_path: Option<PathBuf>,
@@ -51,53 +52,43 @@ impl EditorState {
 
         // Get cursor position from text edit state
         if let Some(mut state) = egui::TextEdit::load_state(ui.ctx(), self.text_edit_id) {
-            let cursor_pos = match state.cursor.char_range() {
+            let cursor_char_pos = match state.cursor.char_range() {
                 Some(range) => range.primary.index,
                 None => return, // No cursor position available
             };
 
+            // Convert character position to byte position
+            let cursor_pos = self.current_content
+                .char_indices()
+                .nth(cursor_char_pos)
+                .map(|(byte_pos, _)| byte_pos)
+                .unwrap_or(self.current_content.len());
+
             // Find the current line
-            let mut line_start = 0;
-            let mut line_end = self.current_content.len();
+            // Find line start - scan backwards from cursor to find previous newline
+            let line_start = if cursor_pos > 0 {
+                self.current_content[..cursor_pos]
+                    .rfind('\n')
+                    .map(|pos| pos + 1)
+                    .unwrap_or(0)
+            } else {
+                0
+            };
 
-            // Find line start
-            for (i, c) in self.current_content.char_indices().rev() {
-                if i >= cursor_pos {
-                    continue;
-                }
-                if c == '\n' {
-                    line_start = i + 1;
-                    break;
-                }
-            }
-
-            // Find line end
-            for (i, c) in self.current_content.char_indices() {
-                if i <= cursor_pos {
-                    continue;
-                }
-                if c == '\n' {
-                    line_end = i;
-                    break;
-                }
-            }
+            // Find line end - scan forwards from line_start to find next newline
+            let line_end = self.current_content[line_start..]
+                .find('\n')
+                .map(|pos| line_start + pos)
+                .unwrap_or(self.current_content.len());
 
             let line = &self.current_content[line_start..line_end];
 
-            // Check if line already starts with a timestamp [mm:ss.xx]
-            let has_timestamp = line.len() >= 11
-                && line.starts_with('[')
-                && line.chars().nth(10) == Some(']')
-                && line.chars().nth(2) == Some(':')
-                && line.chars().nth(5) == Some('.');
+            // Check if line already starts with a timestamp [mm:ss.xx] or [mm:ss]
+            let timestamp_regex = Regex::new(r"^\[\d{2}:\d{2}(?:\.\d{2})?\]").unwrap();
 
-            let new_line = if has_timestamp {
-                // Replace existing timestamp - find the closing bracket and keep everything after it
-                if let Some(bracket_pos) = line.find(']') {
-                    format!("{}{}", timestamp, &line[bracket_pos + 1..])
-                } else {
-                    format!("{}{}", timestamp, line)
-                }
+            let new_line = if let Some(mat) = timestamp_regex.find(line) {
+                // Replace existing timestamp
+                format!("{}{}", timestamp, &line[mat.end()..])
             } else {
                 // Insert new timestamp at the beginning
                 format!("{}{}", timestamp, line)
@@ -108,15 +99,18 @@ impl EditorState {
 
             // Move cursor to the start of the next line
             // Check if there's a newline after this line
-            let after_line_pos = line_start + new_line.len();
-            if after_line_pos < self.current_content.len() {
+            let after_line_byte_pos = line_start + new_line.len();
+            if after_line_byte_pos < self.current_content.len() {
                 // Skip the newline character to go to the start of next line
-                let new_cursor_pos = after_line_pos + 1;
-                let ccursor = egui::text::CCursor::new(new_cursor_pos);
+                let new_cursor_byte_pos = after_line_byte_pos + 1;
+                // Convert byte position back to character position
+                let new_cursor_char_pos = self.current_content[..new_cursor_byte_pos].chars().count();
+                let ccursor = egui::text::CCursor::new(new_cursor_char_pos);
                 state.cursor.set_char_range(Some(egui::text::CCursorRange::one(ccursor)));
             } else {
                 // We're at the end of the file, stay at the end of the current line
-                let ccursor = egui::text::CCursor::new(after_line_pos);
+                let cursor_char_pos = self.current_content[..after_line_byte_pos].chars().count();
+                let ccursor = egui::text::CCursor::new(cursor_char_pos);
                 state.cursor.set_char_range(Some(egui::text::CCursorRange::one(ccursor)));
             }
 
@@ -178,7 +172,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut EditorState, playback_position: Opt
     ui.separator();
 
     // Main text editor
-    let available_height = ui.available_height() - 40.0; // Reserve space for timestamp button
+    let available_height = ui.available_height() - 70.0; // Reserve space for current lyric display and timestamp button
     egui::ScrollArea::vertical()
         .auto_shrink([false, false])
         .max_height(available_height)
@@ -192,6 +186,63 @@ pub fn render(ui: &mut egui::Ui, state: &mut EditorState, playback_position: Opt
         });
 
     ui.separator();
+
+    // Show current lyric preview (without timestamp)
+    if let Some(text_state) = egui::TextEdit::load_state(ui.ctx(), state.text_edit_id) {
+        if let Some(cursor_range) = text_state.cursor.char_range() {
+            let cursor_char_pos = cursor_range.primary.index;
+
+            // Convert character position to byte position
+            let cursor_pos = state.current_content
+                .char_indices()
+                .nth(cursor_char_pos)
+                .map(|(byte_pos, _)| byte_pos)
+                .unwrap_or(state.current_content.len());
+
+            // Find the current line
+            let line_start = if cursor_pos > 0 {
+                state.current_content[..cursor_pos]
+                    .rfind('\n')
+                    .map(|pos| pos + 1)
+                    .unwrap_or(0)
+            } else {
+                0
+            };
+
+            let line_end = state.current_content[line_start..]
+                .find('\n')
+                .map(|pos| line_start + pos)
+                .unwrap_or(state.current_content.len());
+
+            let current_line = &state.current_content[line_start..line_end];
+
+            // Strip timestamp if present
+            let timestamp_regex = Regex::new(r"^\[\d{2}:\d{2}(?:\.\d{2})?\]").unwrap();
+            let lyric_text = if let Some(mat) = timestamp_regex.find(current_line) {
+                &current_line[mat.end()..]
+            } else {
+                current_line
+            };
+
+            ui.horizontal(|ui| {
+                ui.label("Current Lyric:");
+                let text = if lyric_text.is_empty() {
+                    "(empty line)".to_string()
+                } else if lyric_text.len() > 80 {
+                    format!("{}...", &lyric_text[..80])
+                } else {
+                    lyric_text.to_string()
+                };
+
+                ui.label(
+                    egui::RichText::new(text)
+                        .monospace()
+                        .background_color(egui::Color32::from_rgb(50, 50, 50))
+                        .color(egui::Color32::from_rgb(220, 220, 220))
+                );
+            });
+        }
+    }
 
     // Timestamp insertion button
     let button_enabled = playback_position.is_some();

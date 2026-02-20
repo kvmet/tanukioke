@@ -236,7 +236,11 @@ impl eframe::App for App {
                     });
 
                     if ctx.input(|i| i.viewport().close_requested()) {
-                        should_close = true;
+                        if self.editor_state.is_dirty() {
+                            self.editor_state.show_close_confirm = true;
+                        } else {
+                            should_close = true;
+                        }
                     }
                 },
             );
