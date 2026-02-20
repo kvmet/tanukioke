@@ -228,8 +228,12 @@ impl LyricsWindow {
                     let progress = ((current_position - current_time) / time_range) as f32;
                     let progress = progress.clamp(0.0, 1.0);
 
+                    // Apply exponential ease-in for a "snap into place" effect
+                    // This makes the transition start slow and accelerate as it approaches the target
+                    let eased_progress = 2.0_f32.powf(10.0 * (progress - 1.0));
+
                     // Interpolate between the two centers in content space
-                    let target_center = current_center + (next_center - current_center) * progress;
+                    let target_center = current_center + (next_center - current_center) * eased_progress;
 
                     // Scroll so that target_center is at viewport center
                     target_center - viewport_center
