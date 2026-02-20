@@ -74,11 +74,17 @@ impl App {
             Vec::new()
         };
 
+        let lyrics_window = Some(crate::ui::lyrics_window::LyricsWindow::new(
+            playback_state.clone(),
+            None,
+            config.clone(),
+        ));
+
         Self {
             playback_state,
             audio_engine,
-            show_lyrics_window: false,
-            lyrics_window: None,
+            show_lyrics_window: true,
+            lyrics_window,
             config,
             library_songs,
             library_search_query: String::new(),
@@ -166,13 +172,12 @@ impl eframe::App for App {
         // Show lyrics window as a separate viewport if requested
         if self.show_lyrics_window {
             if let Some(mut lyrics_window) = self.lyrics_window.take() {
-                let mut should_close = false;
-
                 ctx.show_viewport_immediate(
                     egui::ViewportId::from_hash_of("lyrics_window"),
                     egui::ViewportBuilder::default()
                         .with_title("Lyrics")
-                        .with_inner_size([800.0, 600.0]),
+                        .with_inner_size([800.0, 600.0])
+                        .with_close_button(false),
                     |ctx, _class| {
                         let window_height = ctx.screen_rect().height();
 
@@ -180,16 +185,11 @@ impl eframe::App for App {
                             ui.style_mut().visuals.panel_fill = egui::Color32::from_rgb(20, 20, 30);
                         });
 
-                        should_close = lyrics_window.render(ctx, window_height);
+                        lyrics_window.render(ctx, window_height);
                     },
                 );
 
-                if should_close {
-                    self.show_lyrics_window = false;
-                    // lyrics_window is dropped
-                } else {
-                    self.lyrics_window = Some(lyrics_window);
-                }
+                self.lyrics_window = Some(lyrics_window);
             }
         }
 
@@ -254,17 +254,8 @@ impl eframe::App for App {
         egui::CentralPanel::default().show(ctx, |ui| {
             // Top section - Player controls
             egui::TopBottomPanel::top("player_panel").show_inside(ui, |ui| {
-                ui.heading("Tanukioke");
-                ui.separator();
-
                 // Player controls
                 crate::ui::player::render(ui, &self.audio_engine, &self.playback_state);
-
-                ui.horizontal(|ui| {
-                    if ui.button("🎤 Open Lyrics Window").clicked() {
-                        self.show_lyrics_window = true;
-                    }
-                });
             });
 
             // Bottom section - Library (2/3) and Queue (1/3)
@@ -293,7 +284,6 @@ impl eframe::App for App {
                                     crate::ui::library_view::LibraryAction::Load(path) => {
                                         match self.load_song(path) {
                                             Ok(_) => {
-                                                self.show_lyrics_window = true;
                                             }
                                             Err(e) => {
                                                 eprintln!("Failed to load song: {}", e);
@@ -378,7 +368,6 @@ impl eframe::App for App {
                                     crate::ui::queue::QueueAction::Load(path) => {
                                         match self.load_song(path) {
                                             Ok(_) => {
-                                                self.show_lyrics_window = true;
                                             }
                                             Err(e) => {
                                                 eprintln!("Failed to load song: {}", e);

@@ -121,7 +121,7 @@ impl LyricsWindow {
                             self.line_heights.push(line_height);
                         }
                     } else {
-                        ui.heading("No lyrics loaded");
+                        ui.heading("Tanukioke!!");
                     }
 
                     // Add bottom padding

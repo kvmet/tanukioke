@@ -6,9 +6,6 @@ pub fn render(
     audio_engine: &Arc<Mutex<crate::audio::AudioEngine>>,
     playback_state: &Arc<Mutex<crate::app::PlaybackState>>,
 ) {
-    ui.heading("Player");
-    ui.add_space(10.0);
-
     // Transport controls
     ui.horizontal(|ui| {
         let state = playback_state.lock().unwrap();
