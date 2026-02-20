@@ -63,8 +63,6 @@ pub fn render(
                 |ui| {
                     egui::ScrollArea::vertical()
                         .show(ui, |ui| {
-                            ui.heading("Volumes");
-
                             let mut engine = audio_engine.lock().unwrap();
                             let tracks = engine.tracks_mut();
 
