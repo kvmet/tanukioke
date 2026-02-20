@@ -241,14 +241,14 @@ impl eframe::App for App {
 
             // Bottom section - Library (2/3) and Queue (1/3)
             egui::CentralPanel::default().show_inside(ui, |ui| {
-                let available_height = ui.available_height();
-                ui.horizontal_top(|ui| {
-                    ui.set_min_height(available_height);
-                    // Library view - 2/3 width
-                    ui.allocate_ui_with_layout(
-                        egui::vec2(ui.available_width() * 2.0 / 3.0, ui.available_height()),
-                        egui::Layout::top_down(egui::Align::Min),
-                        |ui| {
+                use egui_extras::{StripBuilder, Size};
+
+                StripBuilder::new(ui)
+                    .size(Size::relative(0.66).at_least(300.0)) // Library - 2/3 width
+                    .size(Size::exact(1.0)) // Separator
+                    .size(Size::remainder().at_least(200.0)) // Queue - remaining width
+                    .horizontal(|mut strip| {
+                        strip.cell(|ui| {
                             let is_playing = {
                                 let state = self.playback_state.lock().unwrap();
                                 state.is_playing
@@ -325,16 +325,14 @@ impl eframe::App for App {
                                     }
                                 }
                             }
-                        },
-                    );
+                        });
 
-                    ui.separator();
+                        strip.cell(|ui| {
+                            ui.separator();
+                        });
 
-                    // Queue view - 1/3 width
-                    ui.allocate_ui_with_layout(
-                        egui::vec2(ui.available_width(), ui.available_height()),
-                        egui::Layout::top_down(egui::Align::Min),
-                        |ui| {
+                        strip.cell(|ui| {
+                            // Queue view
                             let is_playing = {
                                 let state = self.playback_state.lock().unwrap();
                                 state.is_playing
@@ -387,9 +385,8 @@ impl eframe::App for App {
 
                                 }
                             }
-                        },
-                    );
-                });
+                        });
+                    });
             });
         });
 

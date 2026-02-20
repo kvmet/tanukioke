@@ -86,18 +86,20 @@ pub fn render(ui: &mut egui::Ui, songs: &[Song], is_playing: bool, search_query:
 
     egui::ScrollArea::vertical()
         .id_salt("library_scroll_area")
+        .auto_shrink([false, false])
         .show(ui, |ui| {
-        use egui_extras::{TableBuilder, Column};
+            use egui_extras::{TableBuilder, Column};
 
         TableBuilder::new(ui)
+            .vscroll(true)
             .striped(true)
-            .resizable(true)
+            .resizable(false)
             .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-            .column(Column::auto().at_least(150.0)) // Artist
-            .column(Column::auto().at_least(150.0)) // Album
-            .column(Column::auto().at_least(200.0)) // Track
-            .column(Column::exact(120.0))           // Actions
-            .header(20.0, |mut header| {
+            .column(Column::auto().at_least(100.0).resizable(true)) // Artist
+            .column(Column::auto().at_least(100.0).resizable(true)) // Album
+            .column(Column::remainder().at_least(150.0)) // Track - fills remaining space
+            .column(Column::auto().at_least(150.0).resizable(true)) // Actions
+        .header(20.0, |mut header| {
                 header.col(|ui| {
                     ui.strong("Artist");
                 });
@@ -110,8 +112,8 @@ pub fn render(ui: &mut egui::Ui, songs: &[Song], is_playing: bool, search_query:
                 header.col(|ui| {
                     ui.strong("Actions");
                 });
-            })
-            .body(|mut body| {
+        })
+        .body(|mut body| {
                 for song in filtered_songs {
                     let metadata = song.get_metadata();
                     let lrx_path = song.lrx_path.clone();
@@ -139,8 +141,9 @@ pub fn render(ui: &mut egui::Ui, songs: &[Song], is_playing: bool, search_query:
                             });
                         });
                         row.col(|ui| {
-                            ui.horizontal(|ui| {
-                                if let Some(path) = &lrx_path {
+                            if let Some(path) = &lrx_path {
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 4.0;
                                     let load_button = egui::Button::new("Load");
                                     let load_response = if is_playing {
                                         ui.add_enabled(false, load_button)
@@ -159,12 +162,12 @@ pub fn render(ui: &mut egui::Ui, songs: &[Song], is_playing: bool, search_query:
                                     if ui.button("✏ Edit").clicked() {
                                         action = Some(LibraryAction::Edit(path.clone()));
                                     }
-                                }
-                            });
+                                });
+                            }
                         });
                     });
-                }
-            });
+            }
+        });
     });
 
     action
