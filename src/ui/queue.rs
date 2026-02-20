@@ -36,7 +36,7 @@ pub struct EditEntryDialog {
     pub is_library_entry: bool,
 }
 
-pub fn render(ui: &mut egui::Ui, queue: &Queue) -> Option<QueueAction> {
+pub fn render(ui: &mut egui::Ui, queue: &Queue, is_playing: bool) -> Option<QueueAction> {
     let mut action = None;
 
     // Header section
@@ -81,71 +81,75 @@ pub fn render(ui: &mut egui::Ui, queue: &Queue) -> Option<QueueAction> {
                     };
 
                     frame.show(ui, |ui| {
-                        ui.horizontal(|ui| {
+                        ui.vertical(|ui| {
                             // Entry info section
-                            ui.vertical(|ui| {
-                                ui.spacing_mut().item_spacing.y = 2.0;
+                            ui.spacing_mut().item_spacing.y = 2.0;
 
-                                // Singer name (bold)
-                                ui.label(
-                                    egui::RichText::new(&entry.singer_name)
-                                        .strong()
-                                        .size(14.0)
-                                );
+                            // Singer name (bold)
+                            ui.label(
+                                egui::RichText::new(&entry.singer_name)
+                                    .strong()
+                                    .size(14.0)
+                            );
 
-                                // Song title
-                                ui.label(&entry.song_title);
+                            // Song title
+                            ui.label(&entry.song_title);
 
-                                // URL indicator
-                                if let Some(url) = &entry.url {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 4.0;
-                                        if ui.small_button("🔗").on_hover_text("Open URL").clicked() {
-                                            action = Some(QueueAction::OpenUrl(url.clone()));
+                            // URL indicator
+                            if let Some(url) = &entry.url {
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 4.0;
+                                    if ui.small_button("🔗 Open URL").clicked() {
+                                        action = Some(QueueAction::OpenUrl(url.clone()));
+                                    }
+                                    if ui.small_button("📋 Copy URL").clicked() {
+                                        action = Some(QueueAction::CopyUrl(url.clone()));
+                                    }
+                                });
+                            }
+
+                            // Buttons below
+                            ui.add_space(4.0);
+                            ui.horizontal(|ui| {
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                    // Delete button
+                                    if ui.button("✖ Delete").clicked() {
+                                        action = Some(QueueAction::Delete(entry.id));
+                                    }
+
+                                    // Move down button (disabled for last item)
+                                    ui.add_enabled_ui(index < num_entries - 1, |ui| {
+                                        if ui.button("v").on_hover_text("Move Down").clicked() {
+                                            action = Some(QueueAction::MoveDown(entry.id));
                                         }
-                                        if ui.small_button("📋").on_hover_text("Copy URL").clicked() {
-                                            action = Some(QueueAction::CopyUrl(url.clone()));
-                                        }
-                                        ui.label(
-                                            egui::RichText::new(url)
-                                                .small()
-                                                .color(ui.style().visuals.hyperlink_color)
-                                        );
                                     });
-                                }
-                            });
 
-                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                // Delete button
-                                if ui.button("✖").on_hover_text("Delete").clicked() {
-                                    action = Some(QueueAction::Delete(entry.id));
-                                }
+                                    // Move up button (disabled for first item)
+                                    ui.add_enabled_ui(index > 0, |ui| {
+                                        if ui.button("^").on_hover_text("Move Up").clicked() {
+                                            action = Some(QueueAction::MoveUp(entry.id));
+                                        }
+                                    });
 
-                                // Move down button (disabled for last item)
-                                ui.add_enabled_ui(index < num_entries - 1, |ui| {
-                                    if ui.button("↓").on_hover_text("Move Down").clicked() {
-                                        action = Some(QueueAction::MoveDown(entry.id));
+                                    // Edit button
+                                    if ui.button("✏ Edit").clicked() {
+                                        action = Some(QueueAction::Edit(entry.id));
+                                    }
+
+                                    // Load button (only if there's an LRX path)
+                                    if let Some(lrx_path) = &entry.lrx_path {
+                                        let load_button = egui::Button::new("▶ Load");
+                                        let load_response = if is_playing {
+                                            ui.add_enabled(false, load_button)
+                                        } else {
+                                            ui.add(load_button)
+                                        };
+
+                                        if load_response.clicked() {
+                                            action = Some(QueueAction::Load(lrx_path.clone()));
+                                        }
                                     }
                                 });
-
-                                // Move up button (disabled for first item)
-                                ui.add_enabled_ui(index > 0, |ui| {
-                                    if ui.button("↑").on_hover_text("Move Up").clicked() {
-                                        action = Some(QueueAction::MoveUp(entry.id));
-                                    }
-                                });
-
-                                // Edit button
-                                if ui.button("✏").on_hover_text("Edit").clicked() {
-                                    action = Some(QueueAction::Edit(entry.id));
-                                }
-
-                                // Load button (only if there's an LRX path)
-                                if let Some(lrx_path) = &entry.lrx_path {
-                                    if ui.button("▶ Load").clicked() {
-                                        action = Some(QueueAction::Load(lrx_path.clone()));
-                                    }
-                                }
                             });
                         });
                     });

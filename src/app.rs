@@ -308,7 +308,12 @@ impl eframe::App for App {
                         egui::vec2(ui.available_width(), ui.available_height()),
                         egui::Layout::top_down(egui::Align::Min),
                         |ui| {
-                            if let Some(action) = crate::ui::queue::render(ui, &self.queue) {
+                            let is_playing = {
+                                let state = self.playback_state.lock().unwrap();
+                                state.is_playing
+                            };
+
+                            if let Some(action) = crate::ui::queue::render(ui, &self.queue, is_playing) {
                                 match action {
                                     crate::ui::queue::QueueAction::Load(path) => {
                                         match self.load_song(path) {
