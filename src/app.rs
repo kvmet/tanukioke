@@ -204,7 +204,16 @@ impl eframe::App for App {
                     .with_inner_size([800.0, 600.0]),
                 |ctx, _class| {
                     egui::CentralPanel::default().show(ctx, |ui| {
-                        if let Some(action) = crate::ui::lrx_editor::render(ui, &mut self.editor_state) {
+                        let playback_position = {
+                            let state = self.playback_state.lock().unwrap();
+                            if state.is_playing || state.is_paused {
+                                Some(state.position)
+                            } else {
+                                None
+                            }
+                        };
+
+                        if let Some(action) = crate::ui::lrx_editor::render(ui, &mut self.editor_state, playback_position) {
                             match action {
                                 crate::ui::lrx_editor::EditorAction::Save(path, content) => {
                                     match std::fs::write(&path, content) {

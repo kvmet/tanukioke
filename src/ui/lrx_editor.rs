@@ -8,6 +8,7 @@ pub struct EditorState {
     pub show_close_confirm: bool,
     pub show_save_confirm: bool,
     pub show_help: bool,
+    pub text_edit_id: egui::Id,
 }
 
 impl EditorState {
@@ -19,6 +20,7 @@ impl EditorState {
             show_close_confirm: false,
             show_save_confirm: false,
             show_help: false,
+            text_edit_id: egui::Id::new("lrx_editor_text"),
         }
     }
 
@@ -43,6 +45,92 @@ impl EditorState {
         self.show_save_confirm = false;
         self.show_help = false;
     }
+
+    pub fn insert_timestamp(&mut self, ui: &mut egui::Ui, timestamp_seconds: f64) {
+        let timestamp = format_timestamp(timestamp_seconds);
+
+        // Get cursor position from text edit state
+        if let Some(mut state) = egui::TextEdit::load_state(ui.ctx(), self.text_edit_id) {
+            let cursor_pos = match state.cursor.char_range() {
+                Some(range) => range.primary.index,
+                None => return, // No cursor position available
+            };
+
+            // Find the current line
+            let mut line_start = 0;
+            let mut line_end = self.current_content.len();
+
+            // Find line start
+            for (i, c) in self.current_content.char_indices().rev() {
+                if i >= cursor_pos {
+                    continue;
+                }
+                if c == '\n' {
+                    line_start = i + 1;
+                    break;
+                }
+            }
+
+            // Find line end
+            for (i, c) in self.current_content.char_indices() {
+                if i <= cursor_pos {
+                    continue;
+                }
+                if c == '\n' {
+                    line_end = i;
+                    break;
+                }
+            }
+
+            let line = &self.current_content[line_start..line_end];
+
+            // Check if line already starts with a timestamp [mm:ss.xx]
+            let has_timestamp = line.len() >= 11
+                && line.starts_with('[')
+                && line.chars().nth(10) == Some(']')
+                && line.chars().nth(2) == Some(':')
+                && line.chars().nth(5) == Some('.');
+
+            let new_line = if has_timestamp {
+                // Replace existing timestamp - find the closing bracket and keep everything after it
+                if let Some(bracket_pos) = line.find(']') {
+                    format!("{}{}", timestamp, &line[bracket_pos + 1..])
+                } else {
+                    format!("{}{}", timestamp, line)
+                }
+            } else {
+                // Insert new timestamp at the beginning
+                format!("{}{}", timestamp, line)
+            };
+
+            // Replace the line
+            self.current_content.replace_range(line_start..line_end, &new_line);
+
+            // Move cursor to the start of the next line
+            // Check if there's a newline after this line
+            let after_line_pos = line_start + new_line.len();
+            if after_line_pos < self.current_content.len() {
+                // Skip the newline character to go to the start of next line
+                let new_cursor_pos = after_line_pos + 1;
+                let ccursor = egui::text::CCursor::new(new_cursor_pos);
+                state.cursor.set_char_range(Some(egui::text::CCursorRange::one(ccursor)));
+            } else {
+                // We're at the end of the file, stay at the end of the current line
+                let ccursor = egui::text::CCursor::new(after_line_pos);
+                state.cursor.set_char_range(Some(egui::text::CCursorRange::one(ccursor)));
+            }
+
+            // Store the updated state
+            state.store(ui.ctx(), self.text_edit_id);
+        }
+    }
+}
+
+fn format_timestamp(seconds: f64) -> String {
+    let minutes = (seconds / 60.0).floor() as u32;
+    let secs = (seconds % 60.0).floor() as u32;
+    let centiseconds = ((seconds % 1.0) * 100.0).floor() as u32;
+    format!("[{:02}:{:02}.{:02}]", minutes, secs, centiseconds)
 }
 
 pub enum EditorAction {
@@ -50,7 +138,7 @@ pub enum EditorAction {
     Close,
 }
 
-pub fn render(ui: &mut egui::Ui, state: &mut EditorState) -> Option<EditorAction> {
+pub fn render(ui: &mut egui::Ui, state: &mut EditorState, playback_position: Option<f64>) -> Option<EditorAction> {
     let mut action = None;
 
     // Top bar with buttons
@@ -90,15 +178,41 @@ pub fn render(ui: &mut egui::Ui, state: &mut EditorState) -> Option<EditorAction
     ui.separator();
 
     // Main text editor
+    let available_height = ui.available_height() - 40.0; // Reserve space for timestamp button
     egui::ScrollArea::vertical()
         .auto_shrink([false, false])
+        .max_height(available_height)
         .show(ui, |ui| {
             ui.add(
                 egui::TextEdit::multiline(&mut state.current_content)
+                    .id(state.text_edit_id)
                     .desired_width(f32::INFINITY)
                     .font(egui::TextStyle::Monospace)
             );
         });
+
+    ui.separator();
+
+    // Timestamp insertion button
+    let button_enabled = playback_position.is_some();
+    let button_text = if let Some(pos) = playback_position {
+        format!("⏱ Insert Timestamp at {}", format_timestamp(pos))
+    } else {
+        "⏱ Insert Timestamp (No playback)".to_string()
+    };
+
+    if ui.add_sized(
+        [ui.available_width(), 30.0],
+        egui::Button::new(button_text).fill(if button_enabled {
+            egui::Color32::from_rgb(60, 100, 140)
+        } else {
+            egui::Color32::from_gray(60)
+        })
+    ).clicked() && button_enabled {
+        if let Some(pos) = playback_position {
+            state.insert_timestamp(ui, pos);
+        }
+    }
 
     // Close confirmation dialog
     if state.show_close_confirm {
