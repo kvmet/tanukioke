@@ -45,7 +45,7 @@ pub struct App {
     show_edit_queue: bool,
     edit_entry_dialog: Option<crate::ui::queue::EditEntryDialog>,
     show_editor_window: bool,
-    editor_lrx_path: Option<std::path::PathBuf>,
+    editor_state: crate::ui::lrx_editor::EditorState,
 }
 
 impl App {
@@ -91,7 +91,7 @@ impl App {
             show_edit_queue: false,
             edit_entry_dialog: None,
             show_editor_window: false,
-            editor_lrx_path: None,
+            editor_state: crate::ui::lrx_editor::EditorState::new(),
         }
     }
 
@@ -204,11 +204,26 @@ impl eframe::App for App {
                     .with_inner_size([800.0, 600.0]),
                 |ctx, _class| {
                     egui::CentralPanel::default().show(ctx, |ui| {
-                        if ui.button("Close").clicked() {
-                            should_close = true;
+                        if let Some(action) = crate::ui::lrx_editor::render(ui, &mut self.editor_state) {
+                            match action {
+                                crate::ui::lrx_editor::EditorAction::Save(path, content) => {
+                                    match std::fs::write(&path, content) {
+                                        Ok(_) => {
+                                            // Reload to update original_content
+                                            if let Ok(new_content) = std::fs::read_to_string(&path) {
+                                                self.editor_state.load(path, new_content);
+                                            }
+                                        }
+                                        Err(e) => {
+                                            eprintln!("Failed to save file: {}", e);
+                                        }
+                                    }
+                                }
+                                crate::ui::lrx_editor::EditorAction::Close => {
+                                    should_close = true;
+                                }
+                            }
                         }
-                        ui.separator();
-                        crate::ui::lrx_editor::render(ui);
                     });
 
                     if ctx.input(|i| i.viewport().close_requested()) {
@@ -219,7 +234,7 @@ impl eframe::App for App {
 
             if should_close {
                 self.show_editor_window = false;
-                self.editor_lrx_path = None;
+                self.editor_state.clear();
             }
         }
 
@@ -320,8 +335,15 @@ impl eframe::App for App {
                                         }
                                     }
                                     crate::ui::library_view::LibraryAction::Edit(path) => {
-                                        self.editor_lrx_path = Some(path);
-                                        self.show_editor_window = true;
+                                        match std::fs::read_to_string(&path) {
+                                            Ok(content) => {
+                                                self.editor_state.load(path, content);
+                                                self.show_editor_window = true;
+                                            }
+                                            Err(e) => {
+                                                eprintln!("Failed to open file: {}", e);
+                                            }
+                                        }
                                     }
                                 }
                             }
