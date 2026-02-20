@@ -44,7 +44,7 @@ fn default_line_spacing() -> f32 { 16.0 }
 fn default_font_weight() -> f32 { 400.0 }
 fn default_fg_color() -> String { "#FFFFFF".to_string() }
 fn default_bg_color() -> Option<String> { None }
-fn default_snappiness() -> f32 { 10.0 }
+fn default_snappiness() -> f32 { 15.0 }
 
 impl Default for Config {
     fn default() -> Self {

@@ -17,11 +17,26 @@ pub fn render(
                     ui.label("Snappiness:");
 
                     let mut state = playback_state.lock().unwrap();
-                    if ui.add(egui::Slider::new(&mut state.lyrics_snappiness, 0.0..=10000.0)
+
+                    // Map internal value to 0-100 slider display range
+                    let mut slider_value = if state.lyrics_snappiness >= 10000.0 {
+                        100.0
+                    } else {
+                        state.lyrics_snappiness
+                    };
+
+                    if ui.add(egui::Slider::new(&mut slider_value, 0.0..=100.0)
                         .text("📊")
-                        .fixed_decimals(1))
+                        .fixed_decimals(0))
                         .changed()
                     {
+                        // Map slider value: 100 = instant (10000), 0-99 = use as-is
+                        state.lyrics_snappiness = if slider_value >= 100.0 {
+                            10000.0
+                        } else {
+                            slider_value
+                        };
+
                         // Sync to config for persistence
                         config.lyrics_snappiness = state.lyrics_snappiness;
                         let _ = config.save();

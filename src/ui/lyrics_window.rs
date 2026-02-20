@@ -228,14 +228,19 @@ impl LyricsWindow {
                     let progress = ((current_position - current_time) / time_range) as f32;
                     let progress = progress.clamp(0.0, 1.0);
 
-                    // Apply exponential ease-in for a "snap into place" effect
+                    // Apply power-based ease-in for a "snap into place" effect
                     // This makes the transition start slow and accelerate as it approaches the target
                     // Snappiness of 0 = linear, higher values = more exponential
                     let snappiness = self.playback_state.lock().unwrap().lyrics_snappiness;
                     let eased_progress = if snappiness == 0.0 {
                         progress
+                    } else if snappiness >= 10000.0 {
+                        // Instant snap at max snappiness
+                        1.0
                     } else {
-                        2.0_f32.powf(snappiness * (progress - 1.0))
+                        // Map snappiness to power: 1-99 becomes exponent 1.1 to 10.9
+                        let exponent = 1.0 + (snappiness / 10.0);
+                        progress.powf(exponent)
                     };
 
                     // Interpolate between the two centers in content space
