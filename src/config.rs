@@ -31,6 +31,9 @@ pub struct Config {
 
     #[serde(default = "default_bg_color")]
     pub lyrics_default_bg_color: Option<String>,
+
+    #[serde(default = "default_snappiness")]
+    pub lyrics_snappiness: f32,
 }
 
 fn default_opacity_current() -> f32 { 1.0 }
@@ -41,6 +44,7 @@ fn default_line_spacing() -> f32 { 16.0 }
 fn default_font_weight() -> f32 { 400.0 }
 fn default_fg_color() -> String { "#FFFFFF".to_string() }
 fn default_bg_color() -> Option<String> { None }
+fn default_snappiness() -> f32 { 10.0 }
 
 impl Default for Config {
     fn default() -> Self {
@@ -54,6 +58,7 @@ impl Default for Config {
             lyrics_font_weight: default_font_weight(),
             lyrics_default_fg_color: default_fg_color(),
             lyrics_default_bg_color: default_bg_color(),
+            lyrics_snappiness: default_snappiness(),
         }
     }
 }

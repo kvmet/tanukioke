@@ -1,30 +1,9 @@
-# Tanukioke Configuration File
-
-# Path to your karaoke library
 library_path = "./library"
-
-# Lyrics Display Settings
-
-# Opacity for the current (active) lyric line (0.0 - 1.0)
 lyrics_opacity_current = 1.0
-
-# Opacity for upcoming lyric lines (0.0 - 1.0)
 lyrics_opacity_upcoming = 0.7
-
-# Opacity for past lyric lines (0.0 - 1.0)
 lyrics_opacity_past = 0.4
-
-# Font size for lyrics in points
 lyrics_font_size = 64.0
-
-# Spacing between lyric lines in pixels
 lyrics_line_spacing = 64.0
-
-# Font weight for lyrics (400 = normal, 700 = bold)
 lyrics_font_weight = 700.0
-
-# Default foreground (text) color in hex format
 lyrics_default_fg_color = "#FFFFFF"
-
-# Default background color for the lyrics window (optional)
-# lyrics_default_bg_color = "#000000"
+lyrics_snappiness = 100.0

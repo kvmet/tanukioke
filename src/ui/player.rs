@@ -5,12 +5,32 @@ pub fn render(
     ui: &mut egui::Ui,
     audio_engine: &Arc<Mutex<crate::audio::AudioEngine>>,
     playback_state: &Arc<Mutex<crate::app::PlaybackState>>,
+    config: &mut crate::config::Config,
 ) {
     // Top section: Track info + transport (left) and volumes (right)
     ui.horizontal(|ui| {
         // Left side: Track info and transport controls
         ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
             ui.vertical(|ui| {
+                // Lyrics snappiness control
+                ui.horizontal(|ui| {
+                    ui.label("Snappiness:");
+
+                    let mut state = playback_state.lock().unwrap();
+                    if ui.add(egui::Slider::new(&mut state.lyrics_snappiness, 0.0..=10000.0)
+                        .text("📊")
+                        .fixed_decimals(1))
+                        .changed()
+                    {
+                        // Sync to config for persistence
+                        config.lyrics_snappiness = state.lyrics_snappiness;
+                        let _ = config.save();
+                    }
+                    drop(state);
+                });
+
+                ui.add_space(5.0);
+
                 // Track details (placeholder)
                 ui.heading("Track Title");
                 ui.label("Artist Name");

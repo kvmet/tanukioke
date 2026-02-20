@@ -230,7 +230,13 @@ impl LyricsWindow {
 
                     // Apply exponential ease-in for a "snap into place" effect
                     // This makes the transition start slow and accelerate as it approaches the target
-                    let eased_progress = 2.0_f32.powf(10.0 * (progress - 1.0));
+                    // Snappiness of 0 = linear, higher values = more exponential
+                    let snappiness = self.playback_state.lock().unwrap().lyrics_snappiness;
+                    let eased_progress = if snappiness == 0.0 {
+                        progress
+                    } else {
+                        2.0_f32.powf(snappiness * (progress - 1.0))
+                    };
 
                     // Interpolate between the two centers in content space
                     let target_center = current_center + (next_center - current_center) * eased_progress;

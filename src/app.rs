@@ -9,6 +9,7 @@ pub struct PlaybackState {
     pub duration: f64,      // Total duration in seconds
     pub is_playing: bool,   // Whether audio is playing
     pub is_paused: bool,    // Whether audio is paused
+    pub lyrics_snappiness: f32, // Easing strength for lyrics scrolling (0=linear, higher=more snap)
 }
 
 impl Default for PlaybackState {
@@ -18,13 +19,17 @@ impl Default for PlaybackState {
             duration: 0.0,
             is_playing: false,
             is_paused: false,
+            lyrics_snappiness: 10.0,
         }
     }
 }
 
 impl PlaybackState {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(snappiness: f32) -> Self {
+        Self {
+            lyrics_snappiness: snappiness,
+            ..Self::default()
+        }
     }
 }
 
@@ -55,7 +60,7 @@ impl App {
         let audio_engine = crate::audio::AudioEngine::new()
             .expect("Failed to initialize audio engine");
 
-        let playback_state = Arc::new(Mutex::new(PlaybackState::new()));
+        let playback_state = Arc::new(Mutex::new(PlaybackState::new(config.lyrics_snappiness)));
         let audio_engine = Arc::new(Mutex::new(audio_engine));
 
         // Load library from registry or scan on startup
@@ -255,7 +260,7 @@ impl eframe::App for App {
             // Top section - Player controls
             egui::TopBottomPanel::top("player_panel").show_inside(ui, |ui| {
                 // Player controls
-                crate::ui::player::render(ui, &self.audio_engine, &self.playback_state);
+                crate::ui::player::render(ui, &self.audio_engine, &self.playback_state, &mut self.config);
             });
 
             // Bottom section - Library (2/3) and Queue (1/3)
