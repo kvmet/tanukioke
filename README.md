@@ -7,3 +7,5 @@ Tanukioke is a live karaoke playback application that supports:
 - An `lrx` file live-editor that supports lyric-by-lyric timestamp insertion synced with the playback transport
 - Syncronized "scrubbing" through lyrics and audio (audio stops on scrub and resumes on playback. Fastest with `flac` and `wav` files.)
 - Lyric display in a separate window for display on a 'performance' screen while the library and queue can be managed on another display.
+- Dynamically rendered display styles (mostly just color selection for now) per track as well as per vocal part.
+- Smooth-scrolling lyric display with lyric-by-lyric sync to playback transport.
