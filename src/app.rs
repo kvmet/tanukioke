@@ -41,6 +41,7 @@ pub struct App {
     config: crate::config::Config,
     config_dirty: bool,
     last_config_save: std::time::Instant,
+    current_song_metadata: std::collections::HashMap<String, String>,
     library_songs: Vec<crate::library::Song>,
     library_search_query: String,
     show_rescan_confirm: bool,
@@ -96,6 +97,7 @@ impl App {
             config,
             config_dirty: false,
             last_config_save: std::time::Instant::now(),
+            current_song_metadata: std::collections::HashMap::new(),
             library_songs,
             library_search_query: String::new(),
             show_rescan_confirm: false,
@@ -155,6 +157,9 @@ impl App {
         state.duration = duration.as_secs_f64();
         state.position = 0.0;
         drop(state);
+
+        // Store metadata for display
+        self.current_song_metadata = lrx.metadata.clone();
 
         // Update lyrics window if it exists
         self.lyrics_window = Some(
@@ -301,7 +306,7 @@ impl eframe::App for App {
             // Top section - Player controls
             egui::TopBottomPanel::top("player_panel").show_inside(ui, |ui| {
                 // Player controls
-                if let Some(action) = crate::ui::player::render(ui, &self.audio_engine, &self.playback_state) {
+                if let Some(action) = crate::ui::player::render(ui, &self.audio_engine, &self.playback_state, &self.current_song_metadata) {
                     match action {
                         crate::ui::player::PlayerAction::OpenSettings => {
                             // Toggle settings window visibility

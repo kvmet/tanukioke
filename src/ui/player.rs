@@ -9,6 +9,7 @@ pub fn render(
     ui: &mut egui::Ui,
     audio_engine: &Arc<Mutex<crate::audio::AudioEngine>>,
     playback_state: &Arc<Mutex<crate::app::PlaybackState>>,
+    song_metadata: &std::collections::HashMap<String, String>,
 ) -> Option<PlayerAction> {
     let mut action = None;
     // Top section: Track info + transport (left) and volumes (right)
@@ -16,10 +17,14 @@ pub fn render(
         // Left side: Track info and transport controls
         ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
             ui.vertical(|ui| {
-                // Track details (placeholder)
-                ui.heading("Track Title");
-                ui.label("Artist Name");
-                ui.label("Album Name");
+                // Track details
+                let title = song_metadata.get("ti").map(|s| s.as_str()).unwrap_or("No Track Loaded");
+                let artist = song_metadata.get("ar").map(|s| s.as_str()).unwrap_or("Unknown Artist");
+                let album = song_metadata.get("al").map(|s| s.as_str()).unwrap_or("Unknown Album");
+
+                ui.heading(title);
+                ui.label(artist);
+                ui.label(album);
 
                 ui.add_space(5.0);
 
