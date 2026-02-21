@@ -6,7 +6,8 @@ pub fn render(
     audio_engine: &Arc<Mutex<crate::audio::AudioEngine>>,
     playback_state: &Arc<Mutex<crate::app::PlaybackState>>,
     config: &mut crate::config::Config,
-) {
+) -> bool {
+    let mut config_changed = false;
     // Top section: Track info + transport (left) and volumes (right)
     ui.horizontal(|ui| {
         // Left side: Track info and transport controls
@@ -39,7 +40,7 @@ pub fn render(
 
                         // Sync to config for persistence
                         config.lyrics_snappiness = state.lyrics_snappiness;
-                        let _ = config.save();
+                        config_changed = true;
                     }
                     drop(state);
                 });
@@ -160,6 +161,8 @@ pub fn render(
             ui.label(format_time(state.duration));
         });
     });
+
+    config_changed
 }
 
 fn format_time(seconds: f64) -> String {

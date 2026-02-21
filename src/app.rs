@@ -39,6 +39,8 @@ pub struct App {
     show_lyrics_window: bool,
     lyrics_window: Option<crate::ui::lyrics_window::LyricsWindow>,
     config: crate::config::Config,
+    config_dirty: bool,
+    last_config_save: std::time::Instant,
     library_songs: Vec<crate::library::Song>,
     library_search_query: String,
     show_rescan_confirm: bool,
@@ -91,6 +93,8 @@ impl App {
             show_lyrics_window: true,
             lyrics_window,
             config,
+            config_dirty: false,
+            last_config_save: std::time::Instant::now(),
             library_songs,
             library_search_query: String::new(),
             show_rescan_confirm: false,
@@ -167,6 +171,9 @@ impl App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Periodically save config if dirty (every 30 seconds)
+        self.save_config_if_needed(false);
+
         // Update playback state from audio engine
         {
             let mut engine = self.audio_engine.lock().unwrap();
@@ -260,7 +267,10 @@ impl eframe::App for App {
             // Top section - Player controls
             egui::TopBottomPanel::top("player_panel").show_inside(ui, |ui| {
                 // Player controls
-                crate::ui::player::render(ui, &self.audio_engine, &self.playback_state, &mut self.config);
+                let config_changed = crate::ui::player::render(ui, &self.audio_engine, &self.playback_state, &mut self.config);
+                if config_changed {
+                    self.mark_config_dirty();
+                }
             });
 
             // Bottom section - Library (2/3) and Queue (1/3)
@@ -450,7 +460,35 @@ impl eframe::App for App {
         // Request repaint for smooth UI updates
         ctx.request_repaint();
     }
+
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        // Save config on exit if dirty
+        self.save_config_if_needed(true);
+    }
 }
 
 impl App {
+    /// Mark the config as needing to be saved
+    pub fn mark_config_dirty(&mut self) {
+        self.config_dirty = true;
+    }
+
+    /// Save config if it's dirty and enough time has passed (or force=true)
+    /// Saves every 30 seconds if dirty, or immediately if force=true
+    fn save_config_if_needed(&mut self, force: bool) {
+        if !self.config_dirty {
+            return;
+        }
+
+        let should_save = force || self.last_config_save.elapsed().as_secs() >= 30;
+
+        if should_save {
+            if let Err(e) = self.config.save() {
+                eprintln!("Failed to save config: {}", e);
+            } else {
+                self.config_dirty = false;
+                self.last_config_save = std::time::Instant::now();
+            }
+        }
+    }
 }
