@@ -191,7 +191,8 @@ impl eframe::App for App {
                     egui::ViewportBuilder::default()
                         .with_title("Lyrics")
                         .with_inner_size([800.0, 600.0])
-                        .with_close_button(false),
+                        .with_close_button(false)
+                        .with_always_on_top(),
                     |ctx, _class| {
                         let window_height = ctx.screen_rect().height();
 
@@ -303,7 +304,8 @@ impl eframe::App for App {
                 if let Some(action) = crate::ui::player::render(ui, &self.audio_engine, &self.playback_state) {
                     match action {
                         crate::ui::player::PlayerAction::OpenSettings => {
-                            self.show_settings_window = true;
+                            // Toggle settings window visibility
+                            self.show_settings_window = !self.show_settings_window;
                         }
                     }
                 }
