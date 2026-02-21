@@ -1,0 +1,118 @@
+[ar:Lorem Artist]
+[ti:LRX Format Template]
+[al:Ipsum Album]
+[length:04:30]
+[key:C]
+[au:Composer Name]
+[lr:Lyricist Name]
+[by:Template Creator]
+[offset:0]
+[color:#DDDDDD]
+[background_color:#1A1A1A]
+
+[track.instrumental:name=Instrumental Track]
+[track.instrumental:source=template_instrumental.flac]
+[track.instrumental:volume=1.0]
+
+[track.vocals:name=Lead Vocals]
+[track.vocals:source=template_vocals.flac]
+[track.vocals:volume=0.85]
+
+[track.harmony:name=Harmony Vocals]
+[track.harmony:source=template_harmony.flac]
+[track.harmony:volume=0.75]
+
+[part.lead:name=Lead Vocal]
+[part.lead:color=#FF6B9D]
+
+[part.harmony:name=Harmony]
+[part.harmony:color=#6B9DFF]
+
+[part.both:name=Both Parts]
+[part.both:color=#9DFF6B]
+
+[part.instruction:name=Instruction]
+[part.instruction:color=#FFD700]
+
+[00:00.00][instruction]Welcome to the LRX format template
+[00:03.50][instruction]This file demonstrates all available features
+[00:07.00][instruction]---
+[00:08.50][instruction]Section One: Metadata tags at the top
+[00:12.00][instruction]Include artist, title, album, and length
+[00:15.50][instruction]Add musical key, creator name, and offset
+[00:19.00][instruction]Set global colors with color and background_color tags
+[00:23.00][instruction]---
+[00:24.50][instruction]Section Two: Track definitions
+[00:27.50][instruction]Each track needs a unique ID using dot notation
+[00:31.00][instruction]Define name, source file path, and volume
+[00:34.50][instruction]Paths are relative to this LRX file location
+[00:38.00][instruction]Volume ranges from zero point zero to one point zero
+[00:42.00][instruction]---
+[00:43.50][instruction]Section Three: Part definitions
+[00:46.50][instruction]Parts represent different vocal roles or sections
+[00:50.00][instruction]Each part has a unique ID, name, and color
+[00:53.50][instruction]Colors use hex format: hashtag R R G G B B
+[00:57.50][instruction]---
+[00:59.00][instruction]Section Four: Timed lyrics
+[01:02.00][instruction]Now let's see examples with actual lyrics
+[01:05.50][instruction]---
+[01:07.00]This line has no part tag and uses global color
+[01:11.00]Lorem ipsum dolor sit amet
+[01:14.50]Consectetur adipiscing elit
+[01:18.00][lead]This line has the lead part tag
+[01:21.50][lead]Sed do eiusmod tempor incididunt
+[01:25.00][lead]Ut labore et dolore magna aliqua
+[01:29.00][harmony]This line uses the harmony part
+[01:32.50][harmony]Ut enim ad minim veniam
+[01:36.00][harmony]Quis nostrud exercitation ullamco
+[01:40.00][both]This is the both parts tag
+[01:43.50][both]Laboris nisi ut aliquip ex ea commodo
+[01:47.00][instruction]---
+[01:48.50][instruction]You can have multiple timestamps for the same line
+[01:52.00][lead]Duis aute irure dolor in reprehenderit
+[01:52.00][harmony]Duis aute irure dolor in reprehenderit
+[01:56.00][instruction]Both parts sang that line simultaneously
+[01:59.50][instruction]---
+[02:01.00][instruction]Special characters and formatting
+[02:04.50]♪ Musical note symbols work fine ♪
+[02:08.00][lead]Voluptate velit esse cillum dolore
+[02:11.50][harmony](Backing vocals in parentheses)
+[02:15.00][both]Eu fugiat nulla pariatur
+[02:18.50][instruction]---
+[02:20.00][instruction]Section Five: Color hierarchy explained
+[02:23.50][instruction]Part colors override global colors
+[02:27.00][instruction]Lines without part tags use global color
+[02:30.50][instruction]If no global color, app defaults are used
+[02:34.00][instruction]---
+[02:35.50][instruction]Section Six: Timing and offsets
+[02:39.00][instruction]Times use minutes, seconds, centiseconds format
+[02:42.50][instruction]For example: zero zero colon twelve point fifty
+[02:46.00][instruction]Global offset shifts all timestamps uniformly
+[02:49.50][instruction]Useful for adjusting sync without editing each line
+[02:53.50][instruction]---
+[02:55.00][instruction]Section Seven: Track usage examples
+[02:58.50][instruction]You can define as many tracks as needed
+[03:02.00][instruction]Instrumental, vocals, harmonies, or sound effects
+[03:05.50][instruction]Each track can be toggled on or off independently
+[03:09.00][instruction]Perfect for karaoke or practice sessions
+[03:13.00][instruction]---
+[03:14.50][instruction]Section Eight: Best practices
+[03:18.00][instruction]Keep track IDs simple: instrumental, vocals, harmony
+[03:21.50][instruction]Use descriptive part names: lead, chorus, bridge
+[03:25.00][instruction]Choose contrasting colors for easy reading
+[03:28.50][instruction]Place audio files in the same folder as this file
+[03:32.50][instruction]---
+[03:34.00][instruction]To use this template:
+[03:37.00][instruction]Replace metadata with your song information
+[03:40.50][instruction]Update track sources to your actual audio files
+[03:44.00][instruction]Adjust part names and colors as needed
+[03:47.50][instruction]Replace these lyrics with your actual song lyrics
+[03:51.00][instruction]Time each line to match your audio
+[03:54.50][instruction]---
+[03:56.00][instruction]Thank you for using the LRX format template
+[03:59.50][instruction]Happy syncing!
+[04:03.00]♪
+[04:10.00]Lorem ipsum dolor sit amet
+[04:15.00][lead]Consectetur adipiscing elit
+[04:20.00][harmony]Sed do eiusmod tempor
+[04:25.00][both]Incididunt ut labore
