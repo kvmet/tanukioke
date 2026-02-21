@@ -1,52 +1,21 @@
 use eframe::egui;
 use std::sync::{Arc, Mutex};
 
+pub enum PlayerAction {
+    OpenSettings,
+}
+
 pub fn render(
     ui: &mut egui::Ui,
     audio_engine: &Arc<Mutex<crate::audio::AudioEngine>>,
     playback_state: &Arc<Mutex<crate::app::PlaybackState>>,
-    config: &mut crate::config::Config,
-) -> bool {
-    let mut config_changed = false;
+) -> Option<PlayerAction> {
+    let mut action = None;
     // Top section: Track info + transport (left) and volumes (right)
     ui.horizontal(|ui| {
         // Left side: Track info and transport controls
         ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
             ui.vertical(|ui| {
-                // Lyrics snappiness control
-                ui.horizontal(|ui| {
-                    ui.label("Snappiness:");
-
-                    let mut state = playback_state.lock().unwrap();
-
-                    // Map internal value to 0-100 slider display range
-                    let mut slider_value = if state.lyrics_snappiness >= 10000.0 {
-                        100.0
-                    } else {
-                        state.lyrics_snappiness
-                    };
-
-                    if ui.add(egui::Slider::new(&mut slider_value, 0.0..=100.0)
-                        .text("📊")
-                        .fixed_decimals(0))
-                        .changed()
-                    {
-                        // Map slider value: 100 = instant (10000), 0-99 = use as-is
-                        state.lyrics_snappiness = if slider_value >= 100.0 {
-                            10000.0
-                        } else {
-                            slider_value
-                        };
-
-                        // Sync to config for persistence
-                        config.lyrics_snappiness = state.lyrics_snappiness;
-                        config_changed = true;
-                    }
-                    drop(state);
-                });
-
-                ui.add_space(5.0);
-
                 // Track details (placeholder)
                 ui.heading("Track Title");
                 ui.label("Artist Name");
@@ -74,6 +43,13 @@ pub fn render(
                     if ui.add_sized([60.0, 35.0], egui::Button::new("⏹")).clicked() {
                         let mut engine = audio_engine.lock().unwrap();
                         engine.stop();
+                    }
+
+                    ui.add_space(10.0);
+
+                    // Settings button
+                    if ui.add_sized([60.0, 35.0], egui::Button::new("⚙")).clicked() {
+                        action = Some(PlayerAction::OpenSettings);
                     }
 
                     ui.add_space(10.0);
@@ -162,7 +138,7 @@ pub fn render(
         });
     });
 
-    config_changed
+    action
 }
 
 fn format_time(seconds: f64) -> String {

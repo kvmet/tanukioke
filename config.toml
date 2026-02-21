@@ -1,9 +1,10 @@
 library_path = "./library"
 lyrics_opacity_current = 1.0
-lyrics_opacity_upcoming = 0.7
-lyrics_opacity_past = 0.4
-lyrics_font_size = 64.0
-lyrics_line_spacing = 64.0
-lyrics_font_weight = 700.0
+lyrics_opacity_upcoming = 0.54
+lyrics_opacity_past = 0.29
+lyrics_font_size = 89.0
+lyrics_line_spacing = 0.0
+lyrics_font_weight = 900.0
 lyrics_default_fg_color = "#FFFFFF"
+lyrics_default_bg_color = "#7F4B4B"
 lyrics_snappiness = 10000.0

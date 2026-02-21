@@ -22,6 +22,10 @@ impl LyricsWindow {
         }
     }
 
+    pub fn update_config(&mut self, config: Config) {
+        self.config = config;
+    }
+
     pub fn render(&mut self, ctx: &egui::Context, window_height: f32) -> bool {
         let state = self.playback_state.lock().unwrap();
         let current_position = state.position;

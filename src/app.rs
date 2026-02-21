@@ -53,6 +53,7 @@ pub struct App {
     edit_entry_dialog: Option<crate::ui::queue::EditEntryDialog>,
     show_editor_window: bool,
     editor_state: crate::ui::lrx_editor::EditorState,
+    show_settings_window: bool,
 }
 
 impl App {
@@ -107,6 +108,7 @@ impl App {
             edit_entry_dialog: None,
             show_editor_window: false,
             editor_state: crate::ui::lrx_editor::EditorState::new(),
+            show_settings_window: false,
         }
     }
 
@@ -263,13 +265,47 @@ impl eframe::App for App {
             }
         }
 
+        // Show settings window as a separate viewport if requested
+        if self.show_settings_window {
+            ctx.show_viewport_immediate(
+                egui::ViewportId::from_hash_of("settings_window"),
+                egui::ViewportBuilder::default()
+                    .with_title("Settings")
+                    .with_inner_size([500.0, 600.0]),
+                |ctx, _class| {
+                    egui::CentralPanel::default().show(ctx, |ui| {
+                        let config_changed = crate::ui::settings::render(
+                            ui,
+                            &mut self.config,
+                            &self.playback_state,
+                        );
+
+                        if config_changed {
+                            self.mark_config_dirty();
+                            // Update lyrics window with new config
+                            if let Some(ref mut lyrics_window) = self.lyrics_window {
+                                lyrics_window.update_config(self.config.clone());
+                            }
+                        }
+                    });
+
+                    if ctx.input(|i| i.viewport().close_requested()) {
+                        self.show_settings_window = false;
+                    }
+                },
+            );
+        }
+
         egui::CentralPanel::default().show(ctx, |ui| {
             // Top section - Player controls
             egui::TopBottomPanel::top("player_panel").show_inside(ui, |ui| {
                 // Player controls
-                let config_changed = crate::ui::player::render(ui, &self.audio_engine, &self.playback_state, &mut self.config);
-                if config_changed {
-                    self.mark_config_dirty();
+                if let Some(action) = crate::ui::player::render(ui, &self.audio_engine, &self.playback_state) {
+                    match action {
+                        crate::ui::player::PlayerAction::OpenSettings => {
+                            self.show_settings_window = true;
+                        }
+                    }
                 }
             });
 
