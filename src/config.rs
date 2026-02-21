@@ -34,6 +34,9 @@ pub struct Config {
 
     #[serde(default = "default_snappiness")]
     pub lyrics_snappiness: f32,
+
+    #[serde(default = "default_timing_offset")]
+    pub lyrics_timing_offset: f64,
 }
 
 fn default_opacity_current() -> f32 { 1.0 }
@@ -45,6 +48,7 @@ fn default_font_weight() -> f32 { 400.0 }
 fn default_fg_color() -> String { "#FFFFFF".to_string() }
 fn default_bg_color() -> Option<String> { None }
 fn default_snappiness() -> f32 { 15.0 }
+fn default_timing_offset() -> f64 { 0.0 }
 
 impl Default for Config {
     fn default() -> Self {
@@ -59,6 +63,7 @@ impl Default for Config {
             lyrics_default_fg_color: default_fg_color(),
             lyrics_default_bg_color: default_bg_color(),
             lyrics_snappiness: default_snappiness(),
+            lyrics_timing_offset: default_timing_offset(),
         }
     }
 }

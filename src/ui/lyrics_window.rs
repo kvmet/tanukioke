@@ -28,7 +28,7 @@ impl LyricsWindow {
 
     pub fn render(&mut self, ctx: &egui::Context, window_height: f32) -> bool {
         let state = self.playback_state.lock().unwrap();
-        let current_position = state.position;
+        let current_position = state.position + self.config.lyrics_timing_offset;
         let duration = state.duration;
         drop(state);
 

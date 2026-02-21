@@ -47,6 +47,19 @@ pub fn render(
                 }
                 drop(state);
             });
+
+            ui.horizontal(|ui| {
+                ui.label("Timing Offset:");
+                if ui.add(egui::Slider::new(&mut config.lyrics_timing_offset, -2.0..=2.0)
+                    .text("⏱")
+                    .fixed_decimals(2)
+                    .suffix("s"))
+                    .on_hover_text("Shift lyrics timing forward (+) or backward (-) to compensate for audio delay")
+                    .changed()
+                {
+                    config_changed = true;
+                }
+            });
         });
 
         ui.add_space(10.0);
